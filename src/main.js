@@ -2,5 +2,7 @@
 const browserCapabilities = require('./browserCapabilities');
 window["initializePlayer"] = async function(url) {
     // Check browser capabilities
+    console.time("capability");
     console.log(await browserCapabilities());
+    console.timeEnd("capability");
 }

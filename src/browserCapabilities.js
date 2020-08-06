@@ -19,8 +19,8 @@ module.exports = async function() {
     // Evaluate streaming
     try {
         let b = new Uint8Array(2**16);
-        b.fill(0x52); // 0x52 0x70 0x68
-        let blob = new Blob(b);
+
+        let blob = new Blob([b], {type:"application/octet-stream"});
         let u = URL.createObjectURL(blob);
         let resp = await fetch(u);
         let body = await resp.body;
