@@ -424,6 +424,11 @@ browserify-zlib@^0.2.0:
   dependencies:
     pako "~1.0.5"
 
+brstm@^1.3.2:
+  version "1.3.2"
+  resolved "https://registry.yarnpkg.com/brstm/-/brstm-1.3.2.tgz#7dd072612717be7cc99f1e7275e19414146c247b"
+  integrity sha512-6A97OoVmX8hJOuHCN13D69V/qhkxqah4KA10l4E81qz/ztKCf3bKEd7mqZYLu/dDAVzD1l8R/cEZD2XHQY3ENQ==
+
 buffer-from@^1.0.0:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/buffer-from/-/buffer-from-1.1.1.tgz#32713bc028f75c02fdb710d7c7bcec1f2c6070ef"
