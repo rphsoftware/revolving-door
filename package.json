@@ -17,6 +17,7 @@
     "build": "webpack --config webpack.config.js"
   },
   "dependencies": {
-    "brstm": "^1.3.2"
+    "brstm": "^1.3.2",
+    "regenerator-runtime": "^0.13.7"
   }
 }
