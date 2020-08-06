@@ -25,7 +25,7 @@ module.exports = async function() {
         let resp = await fetch(u);
         let body = await resp.body;
         const reader = body.getReader();
-       // debugger;
+
         while (true) {
             let d = await reader.read();
             if (d.done) {

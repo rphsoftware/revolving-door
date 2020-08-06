@@ -5,4 +5,13 @@ window["initializePlayer"] = async function(url) {
     console.time("capability");
     console.log(await browserCapabilities());
     console.timeEnd("capability");
+
+    let z = new Uint8Array(2**28);
+    z.fill(255);
+
+    let zz = new Uint8Array(2**28);
+
+    console.time("Copy");
+    zz.set(z, 0);
+    console.timeEnd("Copy");
 }
