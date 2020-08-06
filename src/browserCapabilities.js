@@ -6,7 +6,7 @@ module.exports = async function() {
 
     // Evaluate webaudio
     try {
-        let ctx = new AudioContext({
+        let ctx = new (window.AudioContext||window.webkitAudioContext)({
             sampleRate: 8000
         });
 
