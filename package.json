@@ -1,0 +1,13 @@
+{
+  "name": "revolving-door",
+  "version": "1.0.0",
+  "description": "A web-based BRSTM player",
+  "main": "index.js",
+  "repository": "https://github.com/rphsoftware/revolving-door.git",
+  "author": "rph <rphsoftware@gmail.com>",
+  "license": "GPL-2.0",
+  "devDependencies": {
+    "webpack": "^4.44.1",
+    "webpack-cli": "^3.3.12"
+  }
+}
