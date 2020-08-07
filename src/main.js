@@ -9,7 +9,7 @@ let capabilities = null;
 let audioContext = null;
 let scriptNode = null;
 let gainNode = null;
-let fullyLoaded = null;
+let fullyLoaded = true;
 let loadState = 0;
 let playbackCurrentSample = 0;
 let brstm = null;
@@ -98,11 +98,9 @@ async function startPlaying(url) {
         await unlock(audioContext);
     }
 
-    await loadSongStreaming(url);
-
-    setInterval(function() {
-        console.log(loadState);
-    }, 100);
+    if (fullyLoaded) {
+        await (capabilities.streaming? loadSongStreaming : loadSongLegacy)(url);
+    }
 }
 
 window["initializePlayer"] = async function(url) {
