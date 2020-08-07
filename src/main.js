@@ -121,7 +121,9 @@ async function startPlaying(url) {
     console.log(audioContext);
 
     // Create all the stuff
-    scriptNode = audioContext.createScriptProcessor(0, 0, brstm.numberChannels);
+    scriptNode = audioContext.createScriptProcessor(0, 0,
+        brstm.metadata.numberChannels
+    );
     if (scriptNode.bufferSize > brstm.metadata.samplesPerBlock) {
         let highest = 256;
         for (let i = 0; i < powersOf2.length; i++) {
@@ -132,7 +134,7 @@ async function startPlaying(url) {
             }
         }
 
-        scriptNode = audioContext.createScriptProcessor(highest, 0, brstm.numberChannels);
+        scriptNode = audioContext.createScriptProcessor(highest, 0, brstm.metadata.numberChannels);
     }
 
     let bufferSize = scriptNode.bufferSize;
