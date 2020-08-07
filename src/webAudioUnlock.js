@@ -29,6 +29,11 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
                 resolve();
                 unlockWrapper.remove();
             }
-        })
+        });
+
+        if (ac.state === "running") {
+            resolve();
+            unlockWrapper.remove();
+        }
     });
 }
