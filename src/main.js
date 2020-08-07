@@ -4,6 +4,7 @@ const browserCapabilities = require('./browserCapabilities');
 const unlock = require('./webAudioUnlock');
 const libbrstm = require('brstm');
 const { STREAMING_MIN_RESPONSE } = require('./configProvider');
+const copyToChannelPolyfill = require('./copyToChannelPolyfill');
 const gui = require('./gui');
 let hasInitialized = false;
 let capabilities = null;
@@ -86,6 +87,7 @@ function loadSongStreaming(url) {
                     resolved = true;
                 }
                 fullyLoaded = true;
+                console.log("Frog");
                 break;
             }
         }
@@ -98,7 +100,6 @@ async function startPlaying(url) {
         hasInitialized = true;
     }
 
-
     if (fullyLoaded) {
         await (capabilities.streaming? loadSongStreaming : loadSongLegacy)(url);
     } else {
@@ -109,12 +110,41 @@ async function startPlaying(url) {
         await audioContext.close();
     }
 
+    playbackCurrentSample = 0;
+
     audioContext = new (window.AudioContext || window.webkitAudioContext)({
         sampleRate: brstm.sampleRate
     });
 
     await unlock(audioContext);
     console.log(audioContext);
+
+    // Create all the stuff
+    scriptNode = audioContext.createScriptProcessor(0, 0, brstm.numberChannels);
+
+    let bufferSize = scriptNode.bufferSize;
+    scriptNode.onaudioprocess = function(audioProcessingEvent) {
+        let outputBuffer = audioProcessingEvent.outputBuffer;
+        if (!outputBuffer.copyToChannel)
+            outputBuffer.copyToChannel = copyToChannelPolyfill;
+
+        let samples = brstm.getSamples(playbackCurrentSample, bufferSize);
+
+        for (let i = 0; i < samples.length; i++) {
+            let chan = new Float32Array(bufferSize);
+            for (let sid = 0; sid < bufferSize; sid++) {
+                chan[sid] = samples[i][sid] / 32768;
+            }
+            outputBuffer.copyToChannel(chan, i);
+        }
+
+        playbackCurrentSample += bufferSize;
+    }
+
+    gainNode = audioContext.createGain();
+    scriptNode.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    gainNode.gain.setValueAtTime((localStorage.getItem("volumeoverride") || 1), audioContext.currentTime);
 }
 
 window["initializePlayer"] = async function(url) {
