@@ -1,5 +1,8 @@
 module.exports = function(ac) {
-    return new Promise(function(resolve) {
+    return new Promise(async function(resolve) {
+        try {
+            await ac.resume();
+        } catch(e) {}
         let unlockWrapper = document.createElement("div");
         unlockWrapper.style = `background: #888a; z-index: 88888; position: fixed; top: 0; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: center;`
         let unlockPrompt = document.createElement("div");
@@ -15,16 +18,16 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
 
         document.body.appendChild(unlockWrapper);
 
-        unlockWrapper.addEventListener("touchend", function() {
-            ac.resume();
+        unlockWrapper.addEventListener("touchend", async function() {
+            await ac.resume();
             if (ac.state === "running") {
                 resolve();
                 unlockWrapper.remove();
             }
         });
 
-        unlockWrapper.addEventListener("click", function() {
-            ac.resume();
+        unlockWrapper.addEventListener("click", async function() {
+            await ac.resume();
             if (ac.state === "running") {
                 resolve();
                 unlockWrapper.remove();

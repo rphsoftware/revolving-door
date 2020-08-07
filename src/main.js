@@ -4,6 +4,7 @@ const browserCapabilities = require('./browserCapabilities');
 const unlock = require('./webAudioUnlock');
 const libbrstm = require('brstm');
 const { STREAMING_MIN_RESPONSE } = require('./configProvider');
+const gui = require('./gui');
 let hasInitialized = false;
 let capabilities = null;
 let audioContext = null;
@@ -94,13 +95,26 @@ function loadSongStreaming(url) {
 async function startPlaying(url) {
     if (!hasInitialized) {
         capabilities = await browserCapabilities();
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        await unlock(audioContext);
+        hasInitialized = true;
     }
+
 
     if (fullyLoaded) {
         await (capabilities.streaming? loadSongStreaming : loadSongLegacy)(url);
+    } else {
+        return gui.alert("A song is still loading.");
     }
+
+    if (audioContext) {
+        await audioContext.close();
+    }
+
+    audioContext = new (window.AudioContext || window.webkitAudioContext)({
+        sampleRate: brstm.sampleRate
+    });
+
+    await unlock(audioContext);
+    console.log(audioContext);
 }
 
 window["initializePlayer"] = async function(url) {
@@ -108,7 +122,6 @@ window["initializePlayer"] = async function(url) {
     console.time("capability");
     console.log(await browserCapabilities());
     console.timeEnd("capability");
-
 
 }
 
