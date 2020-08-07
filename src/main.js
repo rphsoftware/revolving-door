@@ -45,11 +45,13 @@ function loadSongStreaming(url) {
                 if (!resolved && writeOffset > 2**19) {
                     brstm = new libbrstm.Brstm(brstmBuffer);
                     resolve();
+                    resolved = true;
                 }
             } else {
                 if (!resolved) {
                     brstm = new libbrstm.Brstm(brstmBuffer);
                     resolve();
+                    resolved = true;
                 }
                 fullyLoaded = true;
                 break;
