@@ -6,6 +6,7 @@ const libbrstm = require('brstm');
 const { STREAMING_MIN_RESPONSE } = require('./configProvider');
 const copyToChannelPolyfill = require('./copyToChannelPolyfill');
 const gui = require('./gui');
+const powersOf2 = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 let hasInitialized = false;
 let capabilities = null;
 let audioContext = null;
@@ -120,7 +121,19 @@ async function startPlaying(url) {
     console.log(audioContext);
 
     // Create all the stuff
-    scriptNode = audioContext.createScriptProcessor(8192, 0, brstm.numberChannels);
+    scriptNode = audioContext.createScriptProcessor(0, 0, brstm.numberChannels);
+    if (scriptNode.bufferSize > brstm.metadata.samplesPerBlock) {
+        let highest = 256;
+        for (let i = 0; i < powersOf2.length; i++) {
+            if (powersOf2[i] < brstm.metadata.samplesPerBlock) {
+                highest = powersOf2[i];
+            } else {
+                break;
+            }
+        }
+
+        scriptNode = audioContext.createScriptProcessor(highest, 0, brstm.numberChannels);
+    }
 
     let bufferSize = scriptNode.bufferSize;
     scriptNode.onaudioprocess = function(audioProcessingEvent) {
