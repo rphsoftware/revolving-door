@@ -3,6 +3,7 @@ require("regenerator-runtime/runtime");
 const browserCapabilities = require('./browserCapabilities');
 const unlock = require('./webAudioUnlock');
 const libbrstm = require('brstm');
+const { STREAMING_MIN_RESPONSE } = require('./configProvider');
 let hasInitialized = false;
 let capabilities = null;
 let audioContext = null;
@@ -42,7 +43,7 @@ function loadSongStreaming(url) {
                 writeOffset += d.value.length;
                 loadState = writeOffset;
 
-                if (!resolved && writeOffset > 2**19) {
+                if (!resolved && writeOffset > STREAMING_MIN_RESPONSE) {
                     brstm = new libbrstm.Brstm(brstmBuffer);
                     resolve();
                     resolved = true;
