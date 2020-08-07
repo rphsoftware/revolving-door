@@ -113,14 +113,14 @@ async function startPlaying(url) {
     playbackCurrentSample = 0;
 
     audioContext = new (window.AudioContext || window.webkitAudioContext)({
-        sampleRate: brstm.sampleRate
+        sampleRate: brstm.metadata.sampleRate
     });
 
     await unlock(audioContext);
     console.log(audioContext);
 
     // Create all the stuff
-    scriptNode = audioContext.createScriptProcessor(0, 0, brstm.numberChannels);
+    scriptNode = audioContext.createScriptProcessor(8192, 0, brstm.numberChannels);
 
     let bufferSize = scriptNode.bufferSize;
     scriptNode.onaudioprocess = function(audioProcessingEvent) {
