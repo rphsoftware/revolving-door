@@ -169,6 +169,9 @@ async function startPlaying(url) {
                 let zresampler = new resampler(brstm.metadata.sampleRate, audioContext.sampleRate, 1, chan);
                 zresampler.resampler(bufferSize);
                 chan = zresampler.outputBuffer;
+                if (chan.length > scriptNode.bufferSize) {
+                    chan = chan.slice(0, scriptNode.bufferSize);
+                }
             }
 
             outputBuffer.copyToChannel(chan, i);

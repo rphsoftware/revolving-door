@@ -16,8 +16,8 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
 
         document.body.appendChild(unlockWrapper);
 
-        ac.onstatechange = function(newState) {
-            if (newState === "running") {
+        ac.onstatechange = function() {
+            if (ac.state == "running") {
                 resolve();
                 unlockWrapper.remove();
             }
