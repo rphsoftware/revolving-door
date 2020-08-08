@@ -1,5 +1,5 @@
 // This script shouldn't do anything without explicit user interaction (Triggering playback)
-require("regenerator-runtime/runtime");
+//require("regenerator-runtime/runtime");
 const browserCapabilities = require('./browserCapabilities');
 const unlock = require('./webAudioUnlock');
 const libbrstm = require('brstm');
@@ -116,7 +116,7 @@ async function startPlaying(url) {
         await audioContext.close();
     }
 
-    playbackCurrentSample = 1e6;
+    playbackCurrentSample = 0;
 
     audioContext = new (window.AudioContext || window.webkitAudioContext)(capabilities.sampleRate ? {
         sampleRate: brstm.metadata.sampleRate
