@@ -1,8 +1,7 @@
 // This script shouldn't do anything without explicit user interaction (Triggering playback)
-require("regenerator-runtime/runtime");
 const browserCapabilities = require('./browserCapabilities');
 const unlock = require('./webAudioUnlock');
-const libbrstm = require('brstm');
+const libbrstm = require('./libbrstm');
 const { STREAMING_MIN_RESPONSE } = require('./configProvider');
 const copyToChannelPolyfill = require('./copyToChannelPolyfill');
 const gui = require('./gui');
@@ -18,6 +17,8 @@ let loadState = 0;
 let playbackCurrentSample = 0;
 let brstm = null;
 let brstmBuffer = null;
+let paused = false;
+let enableLoop = false;
 
 function getResampledSample(sourceSr, targetSr, sample) {
     return Math.ceil((sample / sourceSr) * targetSr);
@@ -117,6 +118,8 @@ async function startPlaying(url) {
     }
 
     playbackCurrentSample = 0;
+    paused = false;
+    enableLoop = (brstm.metadata.loopFlag === 1)
 
     audioContext = new (window.AudioContext || window.webkitAudioContext)(capabilities.sampleRate ? {
         sampleRate: brstm.metadata.sampleRate
@@ -139,7 +142,7 @@ async function startPlaying(url) {
             }
         }
 
-        scriptNode = audioContext.createScriptProcessor(highest, 0, brstm.metadata.numberChannels);
+        scriptNode = audioContext.createScriptProcessor(highest, 0, 2);
     }
 
     let bufferSize = scriptNode.bufferSize;
@@ -153,10 +156,46 @@ async function startPlaying(url) {
         if (!outputBuffer.copyToChannel)
             outputBuffer.copyToChannel = copyToChannelPolyfill;
 
-        let samples = brstm.getSamples(
-            playbackCurrentSample,
-            bufferSize
-        );
+        if (paused) {
+            outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 0);
+            outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 1);
+            return;
+        }
+        let samples;
+        if ((playbackCurrentSample + bufferSize) < brstm.metadata.totalSamples) {
+            samples = brstm.getSamples(
+                playbackCurrentSample,
+                bufferSize
+            );
+
+            playbackCurrentSample += bufferSize;
+        } else {
+            if (enableLoop) {
+
+            } else {
+                samples = brstm.getSamples(
+                    playbackCurrentSample,
+                    (brstm.metadata.totalSamples - playbackCurrentSample - 1)
+                );
+
+                for (let i = 0; i < samples.length; i++) {
+                    let buf = new Int16Array(bufferSize).fill(0);
+                    buf.set(samples[i]);
+                    samples[i] = buf;
+                }
+
+                playbackCurrentSample = 0;
+                paused = true;
+            }
+        }
+
+
+        if (samples.length > 2) {
+            samples = [samples[0], samples[1]];
+        }
+        if (samples.length === 1) {
+            samples = [samples[0], samples[0]];
+        }
 
         for (let i = 0; i < samples.length; i++) {
             let chan = new Float32Array(bufferSize);
@@ -175,8 +214,6 @@ async function startPlaying(url) {
 
             outputBuffer.copyToChannel(chan, i);
         }
-
-        playbackCurrentSample += bufferSize;
     }
 
     gainNode = audioContext.createGain();
@@ -186,5 +223,8 @@ async function startPlaying(url) {
 }
 
 window.player = {
-    play: startPlaying
+    play: startPlaying,
+    api: {
+        pause: function() { paused = !paused; }
+    }
 }
