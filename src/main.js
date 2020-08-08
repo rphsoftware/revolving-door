@@ -1,4 +1,5 @@
 // This script shouldn't do anything without explicit user interaction (Triggering playback)
+
 const browserCapabilities = require('./browserCapabilities');
 const unlock = require('./webAudioUnlock');
 const libbrstm = require('./libbrstm');
@@ -7,16 +8,18 @@ const copyToChannelPolyfill = require('./copyToChannelPolyfill');
 const gui = require('./gui');
 import resampler from './resampler';
 const powersOf2 = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
-let hasInitialized = false;
-let capabilities = null;
-let audioContext = null;
-let scriptNode = null;
-let gainNode = null;
-let fullyLoaded = true;
-let loadState = 0;
-let playbackCurrentSample = 0;
-let brstm = null;
-let brstmBuffer = null;
+
+// Player state variables
+let hasInitialized = false;    // If we measured browser capabilities yet
+let capabilities = null;       // Capabilities of our browser
+let audioContext = null;       // WebAudio Audio context
+let scriptNode = null;         // WebAudio script node
+let gainNode = null;           // WebAudio gain node
+let fullyLoaded = true;        // Set to false if file is still streaming
+let loadState = 0;             // How many bytes we loaded
+let playbackCurrentSample = 0; // Current sample of playback (in the LibBRSTM)
+let brstm = null;              // Instance of LibBRSTM
+let brstmBuffer = null;        // Memory view shared with LibBRSTM
 let paused = false;
 let enableLoop = false;
 
@@ -24,31 +27,29 @@ function getResampledSample(sourceSr, targetSr, sample) {
     return Math.ceil((sample / sourceSr) * targetSr);
 }
 
-async function loadSongLegacy(url) {
+async function loadSongLegacy(url) { // Old song loading logic
     let resp = await fetch(url);
-    let body = await resp.arrayBuffer();
+    let body = await resp.arrayBuffer(); // Fetch whole song
 
-    brstm = new libbrstm.Brstm(body);
-
-    console.log(brstm._getMetadata());
+    brstm = new libbrstm.Brstm(body); // Initialize libBRSTM into global state
 
     fullyLoaded = true;
-    loadState = Number.MAX_SAFE_INTEGER;
+    loadState = Number.MAX_SAFE_INTEGER; // This is legacy loading logic, we can just assume we downloaded everything
 }
 
-function loadSongStreaming(url) {
+function loadSongStreaming(url) { // New, fancy song loading logic
     return new Promise(async (resolve, reject) => {
         let resp = await fetch(url);
-        let reader = (await resp.body).getReader();
+        let reader = (await resp.body).getReader(); // Initialize reader
         brstmBuffer = new ArrayBuffer(parseInt(resp.headers.get("content-length")));
-        let bufferView = new Uint8Array(brstmBuffer);
-        let writeOffset = 0;
-        let resolved = false;
+        let bufferView = new Uint8Array(brstmBuffer); // Create shared memory view
+        let writeOffset = 0; // How much we read
+        let resolved = false; // Did we resolve the promise already
         let brstmHeaderSize = 0;
-        fullyLoaded = false;
+        fullyLoaded = false; // We are now streaming
         while(true) {
-            let d = await reader.read();
-            if (!d.done) {
+            let d = await reader.read(); // Read next chunk
+            if (!d.done) { // This means we will receive more
                 bufferView.set(d.value, writeOffset);
                 writeOffset += d.value.length;
                 loadState = writeOffset;
@@ -76,62 +77,65 @@ function loadSongStreaming(url) {
                     }
                     // Require 64 more bytes just to be safe.
                     brstmHeaderSize += 64;
-                    
-                    console.log('WO ' + writeOffset + '. LE ' + endian + '. File header size is ' + brstmHeaderSize + ' bytes'); //DEBUG
+
                 }
 
                 if (!resolved && brstmHeaderSize != 0 && writeOffset > brstmHeaderSize) {
-                    console.log('Creating brstm object with ' + writeOffset + ' bytes of data'); //DEBUG
+                    // Initialize BRSTM instance and allow player to continue loading
                     brstm = new libbrstm.Brstm(brstmBuffer);
                     resolve();
                     resolved = true;
                 }
             } else {
                 if (!resolved) {
-                    console.log('Creating brstm object with all data'); //DEBUG
+                    // For some reason we haven't resolved yet despite the file finishing
                     brstm = new libbrstm.Brstm(brstmBuffer);
                     resolve();
                     resolved = true;
                 }
                 fullyLoaded = true;
-                console.log("Frog");
+                console.log("File finished streaming");
                 break;
             }
         }
     });
 }
 
-async function startPlaying(url) {
-    if (!hasInitialized) {
+async function startPlaying(url) { // Entry point to the
+    if (!hasInitialized) { // We haven't probed the browser for its capabilities yet
         capabilities = await browserCapabilities();
         hasInitialized = true;
-    }
+    } // Now we have!
 
     if (fullyLoaded) {
-        await (capabilities.streaming? loadSongStreaming : loadSongLegacy)(url);
+        await (capabilities.streaming? loadSongStreaming : loadSongLegacy)(url); // Begin loading based on capabilities
+        // The promise returned by the loading method is either resolved after the download is done (legacy)
+        // Or after we download enough to begin loading (modern)
     } else {
         return gui.alert("A song is still loading.");
     }
 
-    if (audioContext) {
+    if (audioContext) { // We have a previous audio context, we need to murderize it
         await audioContext.close();
     }
 
-    playbackCurrentSample = 0;
-    paused = false;
-    enableLoop = (brstm.metadata.loopFlag === 1)
+    playbackCurrentSample = 0; // Set the state for playback
+    paused = false;            // Unpause it
+    enableLoop = (brstm.metadata.loopFlag === 1) // Set the loop settings respective to the loop flag in brstm file
 
-    audioContext = new (window.AudioContext || window.webkitAudioContext)(capabilities.sampleRate ? {
-        sampleRate: brstm.metadata.sampleRate
-    } : {});
+    audioContext = new (window.AudioContext || window.webkitAudioContext) // Because Safari is retarded
+        (capabilities.sampleRate ? {sampleRate: brstm.metadata.sampleRate} : {}); // Do we support sampling?
+    // If not, we just let the browser pick
 
-    await unlock(audioContext);
-    console.log(audioContext);
+    await unlock(audioContext); // Request unlocking of the audio context
 
-    // Create all the stuff
+    // Create the script node
     scriptNode = audioContext.createScriptProcessor(0, 0, 2);
+
+    // If the browser has autism, we need to override the default
     if (scriptNode.bufferSize > brstm.metadata.samplesPerBlock) {
         let highest = 256;
+        // Pick the greatest possible buffer size for the script processor
         for (let i = 0; i < powersOf2.length; i++) {
             if (powersOf2[i] < brstm.metadata.samplesPerBlock) {
                 highest = powersOf2[i];
@@ -140,102 +144,149 @@ async function startPlaying(url) {
             }
         }
 
+        // Reinitialize the script processor
         scriptNode = audioContext.createScriptProcessor(highest, 0, 2);
     }
 
+    // Process bufferSize
     let bufferSize = scriptNode.bufferSize;
+
+    // If we have to resample, the buffer that we get from the BRSTM will be different size.
     bufferSize = capabilities.sampleRate ? bufferSize : getResampledSample(
         audioContext.sampleRate,
         brstm.metadata.sampleRate,
         bufferSize
     );
     let loadBufferSize = bufferSize;
+
+    // If we resample, we need to also fetch some extra samples to prevent audio glitches
     if (!capabilities.sampleRate) {
         loadBufferSize += 20;
     }
+
+    // Set the audio loop callback (called by the browser every time the internal buffer expires)
     scriptNode.onaudioprocess = function(audioProcessingEvent) {
+        // Get a handle for the audio buffer
         let outputBuffer = audioProcessingEvent.outputBuffer;
-        if (!outputBuffer.copyToChannel)
+        if (!outputBuffer.copyToChannel) // On safari (Because it's retarded), we have to polyfill this
             outputBuffer.copyToChannel = copyToChannelPolyfill;
 
-        if (paused) {
+        if (paused) { // If we are paused, we just bail out and return with just zeros
             outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 0);
             outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 1);
             return;
         }
-        let samples;
-        if ((playbackCurrentSample + loadBufferSize) < brstm.metadata.totalSamples) {
+
+        let samples; // Declare the variable for samples
+                     // This will be filled using the below code for handling looping
+        if ((playbackCurrentSample + loadBufferSize) < brstm.metadata.totalSamples) { // Standard codepath if no loop
+            // Populate samples with enough that we can just play it (or resample + play it) without glitches
             samples = brstm.getSamples(
                 playbackCurrentSample,
                 loadBufferSize
             );
 
+            // We use bufferSize not loadBufferSize because the last 20 samples if we have resampling are inaudible
             playbackCurrentSample += bufferSize;
         } else {
+            // We are reaching EOF
+            // Check if we have looping enabled
             if (enableLoop) {
+                // First, get all the samples to the end of the file
                 samples = brstm.getSamples(
                     playbackCurrentSample,
                     (brstm.metadata.totalSamples - playbackCurrentSample)
                 );
 
+                // Get enough samples to fully populate the buffer AFTER loop start point
                 let postLoopSamples = brstm.getSamples(
                     brstm.metadata.loopStartSample,
                     (bufferSize - samples[0].length)
                 );
+
+                // For every channel, join the first and second buffers created above
                 for (let i = 0; i < samples.length; i++) {
                     let buf = new Int16Array(bufferSize).fill(0);
                     buf.set(samples[i]);
                     buf.set(postLoopSamples[i], samples[i].length);
                     samples[i] = buf;
                 }
+
+                // Set to loopStartPoint + length of second buffer
                 playbackCurrentSample = brstm.metadata.loopStartSample + postLoopSamples[0].length;
             } else {
+                // No looping
+                // Get enough samples until EOF
                 samples = brstm.getSamples(
                     playbackCurrentSample,
                     (brstm.metadata.totalSamples - playbackCurrentSample - 1)
                 );
 
+                // Fill remaining space in the buffer with 0
                 for (let i = 0; i < samples.length; i++) {
                     let buf = new Int16Array(bufferSize).fill(0);
                     buf.set(samples[i]);
                     samples[i] = buf;
                 }
 
+                // Tell the player that on the next iteration we are at the start and paused
                 playbackCurrentSample = 0;
                 paused = true;
             }
         }
 
-
+        // In files with too many channels, we just play the first 2 channels
         if (samples.length > 2) {
             samples = [samples[0], samples[1]];
         }
+
+        // In mono files, we duplicate the channel because stereo is mandatory
         if (samples.length === 1) {
             samples = [samples[0], samples[0]];
         }
 
+        // Populate outputs for both channels
         for (let i = 0; i < samples.length; i++) {
+            // WebAudio requires Float32 (-1 to 1), we have Int16 (-32768 to 32767)
             let chan = new Float32Array(loadBufferSize);
+
+            // Convert to Float32
             for (let sid = 0; sid < loadBufferSize; sid++) {
                 chan[sid] = samples[i][sid] / 32768;
             }
 
+            // If we require resampling
             if (!capabilities.sampleRate) {
+                // Initialize the resampler with the original data we got from BRSTM
                 let zresampler = new resampler(brstm.metadata.sampleRate, audioContext.sampleRate, 1, chan);
+
+                // Resample all the samples we loaded
                 zresampler.resampler(loadBufferSize);
+
+                // Copy the output to the channel
                 chan = zresampler.outputBuffer;
+
+                // Cut off excess samples
                 if (chan.length > scriptNode.bufferSize) {
                     chan = chan.slice(0, scriptNode.bufferSize);
                 }
             }
 
+            // At last, write all samples to the output buffer
             outputBuffer.copyToChannel(chan, i);
         }
     }
 
+    // Gain node controls volume
     gainNode = audioContext.createGain();
+
+    // Script node needs to pass through gain so it can be controlled
     scriptNode.connect(gainNode);
+
+    // Gain node outputs to the actual speakers
     gainNode.connect(audioContext.destination);
+
+    // Set gain node volume to `volumeoverride` for remembering the volume
     gainNode.gain.setValueAtTime((localStorage.getItem("volumeoverride") || 1), audioContext.currentTime);
 }
 
