@@ -7,7 +7,7 @@ module.exports = {
         filename: 'bundle.js'
     },
     mode: "development",
-    /*module: {
+    module: {
         rules: [
             {
                 test: /\.m?js$/,
@@ -19,8 +19,5 @@ module.exports = {
                 }
             }
         ]
-    },*/
-    optimization: {
-        minimize: false
     }
 }
