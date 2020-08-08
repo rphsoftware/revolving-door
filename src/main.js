@@ -34,6 +34,7 @@ async function loadSongLegacy(url) {
 
     fullyLoaded = true;
     loadState = Number.MAX_SAFE_INTEGER;
+    playbackCurrentSample = 8e6;
 }
 
 function loadSongStreaming(url) {
@@ -95,6 +96,7 @@ function loadSongStreaming(url) {
                 }
                 fullyLoaded = true;
                 console.log("Frog");
+                playbackCurrentSample = 8e6;
                 break;
             }
         }
@@ -129,7 +131,7 @@ async function startPlaying(url) {
     console.log(audioContext);
 
     // Create all the stuff
-    scriptNode = audioContext.createScriptProcessor(4096, 0,
+    scriptNode = audioContext.createScriptProcessor(0, 0,
         brstm.metadata.numberChannels
     );
     if (scriptNode.bufferSize > brstm.metadata.samplesPerBlock) {
@@ -171,7 +173,22 @@ async function startPlaying(url) {
             playbackCurrentSample += bufferSize;
         } else {
             if (enableLoop) {
+                samples = brstm.getSamples(
+                    playbackCurrentSample,
+                    (brstm.metadata.totalSamples - playbackCurrentSample)
+                );
 
+                let postLoopSamples = brstm.getSamples(
+                    brstm.metadata.loopStartSample,
+                    (bufferSize - samples[0].length)
+                );
+                for (let i = 0; i < samples.length; i++) {
+                    let buf = new Int16Array(bufferSize).fill(0);
+                    buf.set(samples[i]);
+                    buf.set(postLoopSamples[i], samples[i].length);
+                    samples[i] = buf;
+                }
+                playbackCurrentSample = brstm.metadata.loopStartSample + postLoopSamples[0].length;
             } else {
                 samples = brstm.getSamples(
                     playbackCurrentSample,
