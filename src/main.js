@@ -149,7 +149,6 @@ async function startPlaying(url) {
         bufferSize
     );
     scriptNode.onaudioprocess = function(audioProcessingEvent) {
-        console.time("audio");
         let outputBuffer = audioProcessingEvent.outputBuffer;
         if (!outputBuffer.copyToChannel)
             outputBuffer.copyToChannel = copyToChannelPolyfill;
@@ -178,8 +177,6 @@ async function startPlaying(url) {
         }
 
         playbackCurrentSample += bufferSize;
-
-        console.timeEnd("audio");
     }
 
     gainNode = audioContext.createGain();
