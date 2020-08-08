@@ -1,6 +1,7 @@
 const sleep = timeout => new Promise(resolve => setTimeout(resolve, timeout));
 module.exports = function(ac) {
     return new Promise(async function(resolve) {
+        let alreadyremoved = false;
         let unlockWrapper = document.createElement("div");
         unlockWrapper.style = `background: #888a; z-index: 88888; position: fixed; top: 0; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: center;`
         let unlockPrompt = document.createElement("div");
@@ -14,12 +15,17 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
 
         unlockWrapper.appendChild(unlockPrompt);
 
-        document.body.appendChild(unlockWrapper);
+        setTimeout(function() {
+            if (!alreadyremoved)
+                document.body.appendChild(unlockWrapper);
+        }, 200);
+
 
         ac.onstatechange = function() {
             if (ac.state == "running") {
                 resolve();
                 unlockWrapper.remove();
+                alreadyremoved = true;
             }
         }
 
@@ -35,6 +41,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
             if (ac.state === "running") {
                 resolve();
                 unlockWrapper.remove();
+                alreadyremoved = true;
             }
         });
 
@@ -43,12 +50,14 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
             if (ac.state === "running") {
                 resolve();
                 unlockWrapper.remove();
+                alreadyremoved = true;
             }
         });
 
         if (ac.state === "running") {
             resolve();
             unlockWrapper.remove();
+            alreadyremoved = true;
         }
     });
 }
