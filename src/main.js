@@ -34,7 +34,6 @@ async function loadSongLegacy(url) {
 
     fullyLoaded = true;
     loadState = Number.MAX_SAFE_INTEGER;
-    playbackCurrentSample = 8e6;
 }
 
 function loadSongStreaming(url) {
@@ -96,7 +95,6 @@ function loadSongStreaming(url) {
                 }
                 fullyLoaded = true;
                 console.log("Frog");
-                playbackCurrentSample = 8e6;
                 break;
             }
         }
@@ -131,9 +129,7 @@ async function startPlaying(url) {
     console.log(audioContext);
 
     // Create all the stuff
-    scriptNode = audioContext.createScriptProcessor(0, 0,
-        brstm.metadata.numberChannels
-    );
+    scriptNode = audioContext.createScriptProcessor(0, 0, 2);
     if (scriptNode.bufferSize > brstm.metadata.samplesPerBlock) {
         let highest = 256;
         for (let i = 0; i < powersOf2.length; i++) {
@@ -153,6 +149,10 @@ async function startPlaying(url) {
         brstm.metadata.sampleRate,
         bufferSize
     );
+    let loadBufferSize = bufferSize;
+    if (!capabilities.sampleRate) {
+        loadBufferSize += 20;
+    }
     scriptNode.onaudioprocess = function(audioProcessingEvent) {
         let outputBuffer = audioProcessingEvent.outputBuffer;
         if (!outputBuffer.copyToChannel)
@@ -164,10 +164,10 @@ async function startPlaying(url) {
             return;
         }
         let samples;
-        if ((playbackCurrentSample + bufferSize) < brstm.metadata.totalSamples) {
+        if ((playbackCurrentSample + loadBufferSize) < brstm.metadata.totalSamples) {
             samples = brstm.getSamples(
                 playbackCurrentSample,
-                bufferSize
+                loadBufferSize
             );
 
             playbackCurrentSample += bufferSize;
@@ -215,14 +215,14 @@ async function startPlaying(url) {
         }
 
         for (let i = 0; i < samples.length; i++) {
-            let chan = new Float32Array(bufferSize);
-            for (let sid = 0; sid < bufferSize; sid++) {
+            let chan = new Float32Array(loadBufferSize);
+            for (let sid = 0; sid < loadBufferSize; sid++) {
                 chan[sid] = samples[i][sid] / 32768;
             }
 
             if (!capabilities.sampleRate) {
                 let zresampler = new resampler(brstm.metadata.sampleRate, audioContext.sampleRate, 1, chan);
-                zresampler.resampler(bufferSize);
+                zresampler.resampler(loadBufferSize);
                 chan = zresampler.outputBuffer;
                 if (chan.length > scriptNode.bufferSize) {
                     chan = chan.slice(0, scriptNode.bufferSize);
