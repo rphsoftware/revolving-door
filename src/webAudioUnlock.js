@@ -1,5 +1,7 @@
+const sleep = timeout => new Promise(resolve => setTimeout(resolve, timeout));
 module.exports = function(ac) {
     return new Promise(async function(resolve) {
+        await sleep(50);
         try {
             await ac.resume();
             console.log("!!!!!!!");
