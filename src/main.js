@@ -37,7 +37,7 @@ async function loadSongLegacy(url) { // Old song loading logic
 
     fullyLoaded = true;
     loadState = Number.MAX_SAFE_INTEGER; // This is legacy loading logic, we can just assume we downloaded everything
-c
+    samplesReady = Number.MAX_SAFE_INTEGER;
 }
 
 function loadSongStreaming(url) { // New, fancy song loading logic
