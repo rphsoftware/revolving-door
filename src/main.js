@@ -23,6 +23,8 @@ let brstmBuffer = null;        // Memory view shared with LibBRSTM
 let paused = false;
 let enableLoop = false;
 
+let samplesReady = 0;          // How many samples the streamer loaded
+
 function getResampledSample(sourceSr, targetSr, sample) {
     return Math.ceil((sample / sourceSr) * targetSr);
 }
@@ -35,6 +37,7 @@ async function loadSongLegacy(url) { // Old song loading logic
 
     fullyLoaded = true;
     loadState = Number.MAX_SAFE_INTEGER; // This is legacy loading logic, we can just assume we downloaded everything
+c
 }
 
 function loadSongStreaming(url) { // New, fancy song loading logic
@@ -53,7 +56,7 @@ function loadSongStreaming(url) { // New, fancy song loading logic
                 bufferView.set(d.value, writeOffset);
                 writeOffset += d.value.length;
                 loadState = writeOffset;
-                
+
                 // Read the file's header size from the file before passing the file to the BRSTM reader.
                 if (brstmHeaderSize == 0 && writeOffset > 0x80) {
                     // Byte order. 0 = LE, 1 = BE.
@@ -63,7 +66,7 @@ function loadSongStreaming(url) { // New, fancy song loading logic
                     if (bom == 0xFEFF) {
                         endian = 1;
                     }
-                    
+
                     // Read the audio offset. 0x70
                     if(endian == 1) {
                         brstmHeaderSize = (bufferView[0x70]*16777216 + bufferView[0x71]*65536 + bufferView[0x72]*256 + bufferView[0x73]);
@@ -86,6 +89,11 @@ function loadSongStreaming(url) { // New, fancy song loading logic
                     resolve();
                     resolved = true;
                 }
+                if (resolved) {
+                    samplesReady = Math.floor(
+                        ((loadState - brstmHeaderSize) / brstm.metadata.numberChannels) / brstm.metadata.blockSize
+                    ) * brstm.metadata.samplesPerBlock;
+                }
             } else {
                 if (!resolved) {
                     // For some reason we haven't resolved yet despite the file finishing
@@ -94,6 +102,7 @@ function loadSongStreaming(url) { // New, fancy song loading logic
                     resolved = true;
                 }
                 fullyLoaded = true;
+                samplesReady = Number.MAX_SAFE_INTEGER; // Just in case
                 console.log("File finished streaming");
                 break;
             }
@@ -170,6 +179,15 @@ async function startPlaying(url) { // Entry point to the
         let outputBuffer = audioProcessingEvent.outputBuffer;
         if (!outputBuffer.copyToChannel) // On safari (Because it's retarded), we have to polyfill this
             outputBuffer.copyToChannel = copyToChannelPolyfill;
+
+        // Not enough samples override
+        if ((playbackCurrentSample + bufferSize + 1024) > samplesReady) {
+            // override, return early.
+            console.log("Buffering....");
+            outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 0);
+            outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 1);
+            return;
+        }
 
         if (paused) { // If we are paused, we just bail out and return with just zeros
             outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 0);
