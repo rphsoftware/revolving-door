@@ -2,7 +2,7 @@
 
 const browserCapabilities = require('./browserCapabilities');
 const unlock = require('./webAudioUnlock');
-const libbrstm = require('./libbrstm');
+const libbrstm = require('brstm');
 const { STREAMING_MIN_RESPONSE } = require('./configProvider');
 const copyToChannelPolyfill = require('./copyToChannelPolyfill');
 const gui = require('./gui');
@@ -49,6 +49,7 @@ function loadSongStreaming(url) { // New, fancy song loading logic
         let writeOffset = 0; // How much we read
         let resolved = false; // Did we resolve the promise already
         let brstmHeaderSize = 0;
+        samplesReady = 0;
         fullyLoaded = false; // We are now streaming
         while(true) {
             let d = await reader.read(); // Read next chunk
