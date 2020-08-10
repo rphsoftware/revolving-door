@@ -21,13 +21,17 @@
     height: 4px;
     width: 30%;
     background: blue;
+    display: none;
+}
+#gui-loading-bar[data-exists="true"]>#gui-inner-loading-bar {
+    display: block;
     animation: animation 5s ease-in-out infinite;
 }
 
 @keyframes animation {
     0% {
         margin-left: 0;
-        background: hsl(200, 85%, 35%);
+        background: hsl(200, 85%, 55%);
     }
     50% {
         margin-left: 70%;
@@ -35,7 +39,7 @@
     }
     100% {
         margin-left: 0;
-        background: hsl(200, 85%, 35%);
+        background: hsl(200, 85%, 55%);
     }
 }
 
@@ -58,7 +62,7 @@
     height: 100px;
     display: grid;
     grid-template-columns: 8px 16px 32px 8px 254px 8px 16px 8px;
-    grid-template-rows: 8px 16px 16px 16px 20px 16px 8px;
+    grid-template-rows: 8px 8px 16px 16px 28px 16px 8px;
 
     grid-template-areas:
         "ftop ftop ftop ftop ftop ftop ftop ftop"
@@ -66,7 +70,7 @@
         "fleft control control nsf time onsf volume fright"
         "fleft control control nsf seek onsf volume fright"
         "fleft free free free free free volume fright"
-        "fleft loop loop loop loop loop volume fright"
+        "fleft loop loop loop loop lofree volume fright"
         "fbot fbot fbot fbot fbot fbot fbot fbot";
 }
 
@@ -75,6 +79,36 @@
 #pl-timing {grid-area: time;}
 #pl-seek {grid-area: seek;}
 #pl-loop {grid-area:loop;}
-.guistate[data-guistate="ready"] > * {
-    background-color: red;
+
+#pl-pause-play > svg > path {
+    fill: #fff;
+    transition: fill 0.2s ease-in-out;
+}
+#pl-pause-play:hover > svg > path {
+    fill: #ddd;
+}
+#pl-loop {
+    display: grid;
+    grid-template-columns: 16px auto 90px 128px;
+    grid-template-areas: "input text feedback credits";
+}
+#pl-loop > .pl-loop-text {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    line-height: 16px;
+    margin: 0;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: none;
+}
+#pl-loop > a.pl-loop-text:hover {
+    color: orange;
+}
+#pl-timing {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }

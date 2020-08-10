@@ -70,6 +70,8 @@ function hsEvent(a) {
             if (posi < state.loaded) {
                 api.seek(posi);
             }
+
+            module.exports.guiUpdate();
         }
     }
     if (a.type === "click" || a.type === "mousemove") {
@@ -90,6 +92,8 @@ function hsEvent(a) {
         if (posi < state.loaded) {
             api.seek(posi);
         }
+
+        module.exports.guiUpdate();
     }
 }
 
@@ -125,11 +129,26 @@ module.exports.runGUI = function(a) {
     <h3>Loading song...</h3>
 </div>
 <div class="guistate" data-guistate="ready">
-    <div id="pl-pause-play"></div>
+    <div id="pl-pause-play">
+        <svg width="48" height="48" viewBox="0 0 48 48" id="pl-play">
+            <path d="M 10, 10 l 0, 28 l 28, -14" fill="white"></path>
+        </svg>
+        <svg width="48" height="48" viewBox="0 0 48 48" id="pl-pause" style="display: none;">
+            <path d="M 10, 10 l 0, 28 l 10, 0 l 0, -28 M 28, 10 l 0, 28 l 10, 0 l 0, -28" fill="white"></path>
+        </svg>
+    </div>
     <canvas id="pl-volume" width="16" height="84"></canvas>
-    <div id="pl-timing"></div>
+    <div id="pl-timing">
+        <span id="pl-time-start">0:00</span>
+        <span id="pl-time-end"  >0:00</span>
+    </div>
     <canvas id="pl-seek" width="254" height="16"></canvas>
-    <div id="pl-loop"></div>
+    <div id="pl-loop">
+        <input type="checkbox" id="pl-loop-box" style="width: 16px; height: 16px; margin: 0;">
+        <span class="pl-loop-text">Enable loop</span>
+        <a class="pl-loop-text" target="_blank" href="https://smashcustommusic.net/feedback/">Send feedback</a>
+        <a class="pl-loop-text" target="_blank" href="https://github.com/rphsoftware/revolving-door">v2 by Rph</a>
+    </div>
 </div>`
 
     document.body.appendChild(guiElement);
@@ -148,32 +167,66 @@ module.exports.runGUI = function(a) {
     document.querySelector("#pl-seek").addEventListener("touchstart",hsEvent);
     document.querySelector("#pl-seek").addEventListener("touchend", hsEvent);
     document.querySelector("#pl-seek").addEventListener("touchmove", hsEvent);
+
+    document.querySelector("#pl-pause-play").addEventListener("click", function() {
+        api.pause();
+        module.exports.guiUpdate();
+    });
 };
+
+let lastShowLoading = null;
+let lastReady = null;
+let lastVolume = -1;
+let lastPosition = -1;
+let lastPaused = null;
 
 module.exports.guiUpdate = function() {
     if (guiElement) {
         let showLoading = (state.buffering || !state.ready);
-        if (showLoading)
-            guiElement.querySelector("#gui-loading-bar").style.visibility = "visible";
-        else
-            guiElement.querySelector("#gui-loading-bar").style.visibility = "hidden";
+        if (lastShowLoading !== showLoading) {
+            guiElement.querySelector("#gui-loading-bar").dataset.exists = showLoading;
 
-        guiElement.querySelector(".guistate[data-guistate=\"preload\"]").style.display = state.ready ? "none" : "block";
-        guiElement.querySelector(".guistate[data-guistate=\"ready\"]").style.display = !state.ready ? "none" : "grid";
+            lastShowLoading = showLoading;
+        }
 
-        volumeCtx.fillStyle = "#444";
-        volumeCtx.fillRect(0, 0, 16, 84);
+        if (lastReady !== state.ready) {
+            guiElement.querySelector(".guistate[data-guistate=\"preload\"]").style.display = state.ready ? "none" : "block";
+            guiElement.querySelector(".guistate[data-guistate=\"ready\"]").style.display = !state.ready ? "none" : "grid";
+            lastReady = state.ready;
+        }
 
-        volumeCtx.fillStyle = "hsl(200, 85%, 55%)";
-        volumeCtx.fillRect(0, (84 - (84 * state.volume)), 16, 84);
+        if (!state.ready) return;
 
-        barCtx.fillStyle = "#222";
-        barCtx.fillRect(0, 0, 254, 16);
+        let vol = Math.round(84 - (84 * state.volume));
+        if (vol !== lastVolume) {
+            volumeCtx.fillStyle = "#444";
+            volumeCtx.fillRect(0, 0, 16, 84);
 
-        barCtx.fillStyle = "#666";
-        barCtx.fillRect(0, 0, Math.min(254, Math.ceil(((state.loaded / state.samples) * 254))), 16);
+            volumeCtx.fillStyle = "hsl(200, 85%, 55%)";
+            volumeCtx.fillRect(0, vol, 16, 84);
 
-        barCtx.fillStyle = "hsl(200, 85%, 55%)";
-        barCtx.fillRect(0, 0, Math.min(254, Math.ceil(((state.position / state.samples) * 254))), 16);
+            lastVolume = vol;
+        }
+
+        let pos = Math.ceil(((state.position / state.samples) * 254));
+
+        if (pos !== lastPosition) {
+            barCtx.fillStyle = "#222";
+            barCtx.fillRect(0, 0, 254, 16);
+
+            barCtx.fillStyle = "#666";
+            barCtx.fillRect(0, 0, Math.min(254, Math.ceil(((state.loaded / state.samples) * 254))), 16);
+
+            barCtx.fillStyle = "hsl(200, 85%, 55%)";
+            barCtx.fillRect(0, 0, Math.min(254, pos), 16);
+
+            lastPosition = pos;
+        }
+
+        if (lastPaused !== state.paused) {
+            guiElement.querySelector("#pl-pause").style.display = state.paused ? "none" : "block";
+            guiElement.querySelector("#pl-play").style.display = !state.paused ? "none" : "block";
+            lastPaused = state.paused;
+        }
     }
 }

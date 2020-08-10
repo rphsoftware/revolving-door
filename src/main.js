@@ -136,7 +136,8 @@ const internalApi = {
     },
     seek: function(p) {
         playbackCurrentSample = Math.floor(p);
-    }
+    },
+    pause: function() { paused = !paused; },
 }
 
 async function startPlaying(url) { // Entry point to the
@@ -346,9 +347,5 @@ async function startPlaying(url) { // Entry point to the
 }
 
 window.player = {
-    play: startPlaying,
-    api: {
-        pause: function() { paused = !paused; },
-        seek: function(to) { playbackCurrentSample = to;}
-    }
+    play: startPlaying
 }
