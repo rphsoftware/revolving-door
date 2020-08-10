@@ -41,6 +41,8 @@ let brstm = null;              // Instance of LibBRSTM
 let brstmBuffer = null;        // Memory view shared with LibBRSTM
 let paused = false;
 let enableLoop = false;
+let streamCancel = false;
+let playAudioRunning = false;
 
 let samplesReady = 0;          // How many samples the streamer loaded
 let volume = (localStorage.getItem("volumeoverride") || 1);
@@ -60,6 +62,19 @@ async function loadSongLegacy(url) { // Old song loading logic
     samplesReady = Number.MAX_SAFE_INTEGER;
 }
 
+function awaitMessage(content) {
+    return new Promise(function(resolve) {
+        function handler(c) {
+            if (c.data === content && c.isTrusted) {
+                window.removeEventListener("message", handler);
+                resolve();
+            }
+        }
+
+        window.addEventListener("message", handler);
+    });
+}
+
 function loadSongStreaming(url) { // New, fancy song loading logic
     return new Promise(async (resolve, reject) => {
         let resp;
@@ -75,6 +90,7 @@ function loadSongStreaming(url) { // New, fancy song loading logic
         let brstmHeaderSize = 0;
         samplesReady = 0;
         fullyLoaded = false; // We are now streaming
+        streamCancel = false;
         while(true) {
             let d;
             try {
@@ -87,6 +103,11 @@ function loadSongStreaming(url) { // New, fancy song loading logic
                 } else {
                     reject(e);
                 }
+                return;
+            }
+            if (streamCancel) {
+                await reader.cancel();
+                window.postMessage("continueload");
                 return;
             }
             if (!d.done) { // This means we will receive more
@@ -185,38 +206,44 @@ async function startPlaying(url) { // Entry point to the
         setInterval(function() { gui.updateState({loaded:samplesReady}); gui.guiUpdate(); }, 100);
     } // Now we have!
 
-    if (fullyLoaded) {
-        if (audioContext) { // We have a previous audio context, we need to murderize it
-            await audioContext.close();
-            audioContext = null;
-        }
+    if (playAudioRunning) return;
+    playAudioRunning = true;
+    if (!fullyLoaded) {
 
-        playbackCurrentSample = 0; // Set the state for playback
-        paused = false;            // Unpause it
+        console.log("Cancelling last stream...");
+        streamCancel = true;
+        await awaitMessage("continueload");
+        console.log("Done.");
+    }
+    if (audioContext) { // We have a previous audio context, we need to murderize it
+        await audioContext.close();
+        audioContext = null;
+    }
 
-        gui.updateState({ // Populate GUI with initial, yet unknown data
-            ready: false,
-            position: 0,
-            samples: 1e6,
-            loaded: 0,
-            volume: volume,
-            paused: false,
-            buffering: false,
-            sampleRate: 44100,
-            streamingDied: false
-        });
-        try {
-            await (capabilities.streaming ? loadSongStreaming : loadSongLegacy)(url); // Begin loading based on capabilities
-        } catch(e) {
-            gui.updateState({streamingDied:true, ready:true, buffering: false});
-            console.error(e);
-            return;
-        }
+    playbackCurrentSample = 0; // Set the state for playback
+    paused = false;            // Unpause it
+
+    gui.updateState({ // Populate GUI with initial, yet unknown data
+        ready: false,
+        position: 0,
+        samples: 1e6,
+        loaded: 0,
+        volume: volume,
+        paused: false,
+        buffering: false,
+        sampleRate: 44100,
+        streamingDied: false
+    });
+    try {
+        await (capabilities.streaming ? loadSongStreaming : loadSongLegacy)(url); // Begin loading based on capabilities
+    } catch(e) {
+        gui.updateState({streamingDied:true, ready:true, buffering: false});
+        console.error(e);
+        playAudioRunning = false;
+        return;
+    }
         // The promise returned by the loading method is either resolved after the download is done (legacy)
         // Or after we download enough to begin loading (modern)
-    } else {
-        return gui.alert("A song is still loading.");
-    }
 
     audioContext = new (window.AudioContext || window.webkitAudioContext) // Because Safari is retarded
         (capabilities.sampleRate ? {sampleRate: brstm.metadata.sampleRate} : {
@@ -252,6 +279,7 @@ async function startPlaying(url) { // Entry point to the
 
     gui.updateState({ready: true, samples: brstm.metadata.totalSamples});
     gui.updateState({sampleRate: brstm.metadata.sampleRate});
+    playAudioRunning = false;
     // Set the audio loop callback (called by the browser every time the internal buffer expires)
     scriptNode.onaudioprocess = function(audioProcessingEvent) {
         guiupd();
