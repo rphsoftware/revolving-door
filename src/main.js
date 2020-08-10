@@ -44,7 +44,7 @@ let enableLoop = false;
 
 let samplesReady = 0;          // How many samples the streamer loaded
 let volume = (localStorage.getItem("volumeoverride") || 1);
-
+function guiupd() { gui.updateState({position: playbackCurrentSample, paused, volume, loaded: samplesReady, looping: enableLoop}); }
 function getResampledSample(sourceSr, targetSr, sample) {
     return Math.ceil((sample / sourceSr) * targetSr);
 }
@@ -131,14 +131,23 @@ function loadSongStreaming(url) { // New, fancy song loading logic
 const internalApi = {
     setVolume: function(l) {
         volume=l;
+        guiupd();
         if (gainNode)
             gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
     },
     seek: function(p) {
         playbackCurrentSample = Math.floor(p);
+        guiupd();
     },
-    pause: function() { paused = !paused; },
-    setLoop: function(a) { enableLoop = a; }
+    pause: function() {
+        paused = !paused;
+        audioContext[paused ? "suspend" : "resume"]();
+        guiupd();
+    },
+    setLoop: function(a) {
+        enableLoop = a;
+        guiupd();
+    }
 }
 
 async function startPlaying(url) { // Entry point to the
@@ -146,7 +155,7 @@ async function startPlaying(url) { // Entry point to the
         capabilities = await browserCapabilities();
         hasInitialized = true;
         gui.runGUI(internalApi);
-        setInterval(function() { gui.guiUpdate(); }, 100);
+        setInterval(function() { gui.updateState({loaded:samplesReady}); gui.guiUpdate(); }, 100);
     } // Now we have!
 
     if (fullyLoaded) {
@@ -209,7 +218,7 @@ async function startPlaying(url) { // Entry point to the
     gui.updateState({sampleRate: brstm.metadata.sampleRate});
     // Set the audio loop callback (called by the browser every time the internal buffer expires)
     scriptNode.onaudioprocess = function(audioProcessingEvent) {
-        gui.updateState({position: playbackCurrentSample, paused, volume, loaded: samplesReady, looping: enableLoop});
+        guiupd();
         // Get a handle for the audio buffer
         let outputBuffer = audioProcessingEvent.outputBuffer;
         if (!outputBuffer.copyToChannel) // On safari (Because it's retarded), we have to polyfill this
@@ -290,6 +299,7 @@ async function startPlaying(url) { // Entry point to the
                 // Tell the player that on the next iteration we are at the start and paused
                 playbackCurrentSample = 0;
                 paused = true;
+                setTimeout(function() { audioContext.suspend() }, 200);
             }
         }
 

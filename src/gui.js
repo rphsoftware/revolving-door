@@ -189,6 +189,7 @@ let lastPaused = null;
 let lastLength = -1;
 let lastPositionS = -1;
 let lastLooping = null;
+let lastLoaded = -1;
 
 module.exports.guiUpdate = function() {
     if (guiElement) {
@@ -219,18 +220,20 @@ module.exports.guiUpdate = function() {
         }
 
         let pos = Math.ceil(((state.position / state.samples) * 254));
-
-        if (pos !== lastPosition) {
+        let loaded = Math.ceil(((state.loaded / state.samples) * 254));
+        if ((pos !== lastPosition) || (loaded !== lastLoaded)) {
+            console.log("Updated bar...", pos, loaded);
             barCtx.fillStyle = "#222";
             barCtx.fillRect(0, 0, 254, 16);
 
             barCtx.fillStyle = "#666";
-            barCtx.fillRect(0, 0, Math.min(254, Math.ceil(((state.loaded / state.samples) * 254))), 16);
+            barCtx.fillRect(0, 0, Math.min(254, loaded), 16);
 
             barCtx.fillStyle = "hsl(200, 85%, 55%)";
             barCtx.fillRect(0, 0, Math.min(254, pos), 16);
 
             lastPosition = pos;
+            lastLoaded = loaded;
         }
 
         if (lastPaused !== state.paused) {
@@ -250,11 +253,12 @@ module.exports.guiUpdate = function() {
 
         if (playbackSeconds !== lastPositionS) {
             guiElement.querySelector("#pl-time-start").innerText = `${Math.floor(playbackSeconds / 60)}:${(playbackSeconds % 60).toString().padStart(2, "0")}`;
-            lastLength = secondsInSong;
+            lastPositionS = playbackSeconds;
         }
 
         if (lastLooping !== state.looping) {
             guiElement.querySelector("#pl-loop-box").checked = state.looping;
+            lastLooping = state.looping;
         }
     }
 }
