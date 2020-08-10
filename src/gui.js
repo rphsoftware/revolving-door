@@ -14,3 +14,7 @@ ${text}
 
     document.body.appendChild(box);
 }
+
+module.exports.runGUI = function() {
+
+}

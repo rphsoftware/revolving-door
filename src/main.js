@@ -9,6 +9,24 @@ const gui = require('./gui');
 import resampler from './resampler';
 const powersOf2 = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 
+function partitionedGetSamples(brstm, start, size) {
+    let samples = [];
+    let got = 0;
+    for (let i = 0; i < brstm.metadata.numberChannels; i++) {
+        samples.push(new Int16Array(size));
+    }
+
+    while (got < size) {
+        let buf = brstm.getSamples(start + got, Math.min(brstm.metadata.samplesPerBlock, (size - got)));
+        for (let i = 0; i < buf.length; i++) {
+            samples[i].set(buf[i], got);
+        }
+        got += Math.min(brstm.metadata.samplesPerBlock, (size - got));
+    }
+
+    return samples;
+}
+
 // Player state variables
 let hasInitialized = false;    // If we measured browser capabilities yet
 let capabilities = null;       // Capabilities of our browser
@@ -134,29 +152,14 @@ async function startPlaying(url) { // Entry point to the
     enableLoop = (brstm.metadata.loopFlag === 1) // Set the loop settings respective to the loop flag in brstm file
 
     audioContext = new (window.AudioContext || window.webkitAudioContext) // Because Safari is retarded
-        (capabilities.sampleRate ? {sampleRate: brstm.metadata.sampleRate} : {}); // Do we support sampling?
+        (capabilities.sampleRate ? {sampleRate: brstm.metadata.sampleRate} : {
+        }); // Do we support sampling?
     // If not, we just let the browser pick
 
     await unlock(audioContext); // Request unlocking of the audio context
 
     // Create the script node
     scriptNode = audioContext.createScriptProcessor(0, 0, 2);
-
-    // If the browser has autism, we need to override the default
-    if (scriptNode.bufferSize > brstm.metadata.samplesPerBlock) {
-        let highest = 256;
-        // Pick the greatest possible buffer size for the script processor
-        for (let i = 0; i < powersOf2.length; i++) {
-            if (powersOf2[i] < brstm.metadata.samplesPerBlock) {
-                highest = powersOf2[i];
-            } else {
-                break;
-            }
-        }
-
-        // Reinitialize the script processor
-        scriptNode = audioContext.createScriptProcessor(highest, 0, 2);
-    }
 
     // Process bufferSize
     let bufferSize = scriptNode.bufferSize;
@@ -200,7 +203,8 @@ async function startPlaying(url) { // Entry point to the
                      // This will be filled using the below code for handling looping
         if ((playbackCurrentSample + loadBufferSize) < brstm.metadata.totalSamples) { // Standard codepath if no loop
             // Populate samples with enough that we can just play it (or resample + play it) without glitches
-            samples = brstm.getSamples(
+            samples = partitionedGetSamples(
+                brstm,
                 playbackCurrentSample,
                 loadBufferSize
             );
@@ -212,13 +216,15 @@ async function startPlaying(url) { // Entry point to the
             // Check if we have looping enabled
             if (enableLoop) {
                 // First, get all the samples to the end of the file
-                samples = brstm.getSamples(
+                samples = partitionedGetSamples(
+                    brstm,
                     playbackCurrentSample,
                     (brstm.metadata.totalSamples - playbackCurrentSample)
                 );
 
                 // Get enough samples to fully populate the buffer AFTER loop start point
-                let postLoopSamples = brstm.getSamples(
+                let postLoopSamples = partitionedGetSamples(
+                    brstm,
                     brstm.metadata.loopStartSample,
                     (bufferSize - samples[0].length)
                 );
@@ -236,7 +242,8 @@ async function startPlaying(url) { // Entry point to the
             } else {
                 // No looping
                 // Get enough samples until EOF
-                samples = brstm.getSamples(
+                samples = partitionedGetSamples(
+                    brstm,
                     playbackCurrentSample,
                     (brstm.metadata.totalSamples - playbackCurrentSample - 1)
                 );
