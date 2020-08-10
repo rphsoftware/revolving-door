@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>Test</title>
+    <link rel="stylesheet" href="player.css">
 </head>
 <body>
 Song id:<input type="number" min="0" max="99999" value="59060" id="aaa">
     <a href="#" onclick="window.player.play('https://smashcustommusic.net/brstm/' + document.querySelector('#aaa').value + '&noIncrement=1')">Start</a>
-    <script src="dist/bundle.js?version=44"></script>
+    <script src="dist/bundle.js?version=71"></script>
 <script>
     if (window.location.hash.length > 1) {
         let z = window.location.hash.slice(1);

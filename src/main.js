@@ -7,6 +7,7 @@ const { STREAMING_MIN_RESPONSE } = require('./configProvider');
 const copyToChannelPolyfill = require('./copyToChannelPolyfill');
 const gui = require('./gui');
 import resampler from './resampler';
+const sleep = timeout => new Promise(resolve => setTimeout(resolve, timeout));
 const powersOf2 = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 
 function partitionedGetSamples(brstm, start, size) {
@@ -42,6 +43,7 @@ let paused = false;
 let enableLoop = false;
 
 let samplesReady = 0;          // How many samples the streamer loaded
+let volume = (localStorage.getItem("volumeoverride") || 1);
 
 function getResampledSample(sourceSr, targetSr, sample) {
     return Math.ceil((sample / sourceSr) * targetSr);
@@ -97,9 +99,6 @@ function loadSongStreaming(url) { // New, fancy song loading logic
                     if(brstmHeaderSize < 0x90) {
                         brstmHeaderSize = STREAMING_MIN_RESPONSE;
                     }
-                    // Require 64 more bytes just to be safe.
-                    brstmHeaderSize += 64;
-
                 }
 
                 if (!resolved && brstmHeaderSize != 0 && writeOffset > brstmHeaderSize) {
@@ -129,19 +128,43 @@ function loadSongStreaming(url) { // New, fancy song loading logic
     });
 }
 
+const internalApi = {
+    setVolume: function(l) {
+        volume=l;
+        if (gainNode)
+            gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+    },
+    seek: function(p) {
+        playbackCurrentSample = Math.floor(p);
+    }
+}
+
 async function startPlaying(url) { // Entry point to the
     if (!hasInitialized) { // We haven't probed the browser for its capabilities yet
         capabilities = await browserCapabilities();
         hasInitialized = true;
+        gui.runGUI(internalApi);
+        setInterval(function() { gui.guiUpdate(); }, 100);
     } // Now we have!
 
     if (fullyLoaded) {
+        gui.updateState({ // Populate GUI with initial, yet unknown data
+            ready: false,
+            position: 0,
+            samples: 1e6,
+            loaded: 0,
+            volume: volume,
+            paused: false,
+            buffering: false
+        });
         await (capabilities.streaming? loadSongStreaming : loadSongLegacy)(url); // Begin loading based on capabilities
         // The promise returned by the loading method is either resolved after the download is done (legacy)
         // Or after we download enough to begin loading (modern)
     } else {
         return gui.alert("A song is still loading.");
     }
+
+    gui.updateState({ready: true, samples: brstm.metadata.totalSamples});
 
     if (audioContext) { // We have a previous audio context, we need to murderize it
         await audioContext.close();
@@ -157,6 +180,10 @@ async function startPlaying(url) { // Entry point to the
     // If not, we just let the browser pick
 
     await unlock(audioContext); // Request unlocking of the audio context
+
+    if (capabilities.streaming) {
+        await sleep(1000); // In streaming sometimes the start is slightly crunchy, this should fix it.
+    }
 
     // Create the script node
     scriptNode = audioContext.createScriptProcessor(0, 0, 2);
@@ -179,6 +206,7 @@ async function startPlaying(url) { // Entry point to the
 
     // Set the audio loop callback (called by the browser every time the internal buffer expires)
     scriptNode.onaudioprocess = function(audioProcessingEvent) {
+        gui.updateState({position: playbackCurrentSample, paused, volume, loaded: samplesReady});
         // Get a handle for the audio buffer
         let outputBuffer = audioProcessingEvent.outputBuffer;
         if (!outputBuffer.copyToChannel) // On safari (Because it's retarded), we have to polyfill this
@@ -187,12 +215,13 @@ async function startPlaying(url) { // Entry point to the
         // Not enough samples override
         if ((playbackCurrentSample + bufferSize + 1024) > samplesReady) {
             // override, return early.
+            gui.updateState({buffering: true});
             console.log("Buffering....");
             outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 0);
             outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 1);
             return;
         }
-
+        gui.updateState({buffering: false});
         if (paused) { // If we are paused, we just bail out and return with just zeros
             outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 0);
             outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 1);
@@ -313,12 +342,13 @@ async function startPlaying(url) { // Entry point to the
     gainNode.connect(audioContext.destination);
 
     // Set gain node volume to `volumeoverride` for remembering the volume
-    gainNode.gain.setValueAtTime((localStorage.getItem("volumeoverride") || 1), audioContext.currentTime);
+    gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
 }
 
 window.player = {
     play: startPlaying,
     api: {
-        pause: function() { paused = !paused; }
+        pause: function() { paused = !paused; },
+        seek: function(to) { playbackCurrentSample = to;}
     }
 }
