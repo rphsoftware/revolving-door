@@ -62,8 +62,12 @@ async function loadSongLegacy(url) { // Old song loading logic
 
 function loadSongStreaming(url) { // New, fancy song loading logic
     return new Promise(async (resolve, reject) => {
-        let resp = await fetch(url);
-        let reader = (await resp.body).getReader(); // Initialize reader
+        let resp;
+        let reader;
+        try {
+            resp = await fetch(url);
+            reader = (await resp.body).getReader(); // Initialize reader
+        } catch(e) { return reject(e); }
         brstmBuffer = new ArrayBuffer(parseInt(resp.headers.get("content-length")));
         let bufferView = new Uint8Array(brstmBuffer); // Create shared memory view
         let writeOffset = 0; // How much we read
@@ -72,7 +76,19 @@ function loadSongStreaming(url) { // New, fancy song loading logic
         samplesReady = 0;
         fullyLoaded = false; // We are now streaming
         while(true) {
-            let d = await reader.read(); // Read next chunk
+            let d;
+            try {
+                d = await reader.read(); // Read next chunk
+            } catch(e) {
+                if (resolved) {
+                    gui.updateState({streamingDied: true, buffering: false, ready:true});
+                    await audioContext.close();
+                    audioContext = null;
+                } else {
+                    reject(e);
+                }
+                return;
+            }
             if (!d.done) { // This means we will receive more
                 bufferView.set(d.value, writeOffset);
                 writeOffset += d.value.length;
@@ -103,9 +119,15 @@ function loadSongStreaming(url) { // New, fancy song loading logic
 
                 if (!resolved && brstmHeaderSize != 0 && writeOffset > brstmHeaderSize) {
                     // Initialize BRSTM instance and allow player to continue loading
-                    brstm = new libbrstm.Brstm(brstmBuffer);
-                    resolve();
-                    resolved = true;
+                    try {
+                        brstm = new libbrstm.Brstm(brstmBuffer);
+                        resolve();
+                        resolved = true;
+                    } catch(e) {
+                        reject(e);
+                        return;
+                    }
+
                 }
                 if (resolved) {
                     samplesReady = Math.floor(
@@ -115,9 +137,14 @@ function loadSongStreaming(url) { // New, fancy song loading logic
             } else {
                 if (!resolved) {
                     // For some reason we haven't resolved yet despite the file finishing
-                    brstm = new libbrstm.Brstm(brstmBuffer);
-                    resolve();
-                    resolved = true;
+                    try {
+                        brstm = new libbrstm.Brstm(brstmBuffer);
+                        resolve();
+                        resolved = true;
+                    } catch(e) {
+                        reject(e);
+                        return;
+                    }
                 }
                 fullyLoaded = true;
                 samplesReady = Number.MAX_SAFE_INTEGER; // Just in case
@@ -159,6 +186,14 @@ async function startPlaying(url) { // Entry point to the
     } // Now we have!
 
     if (fullyLoaded) {
+        if (audioContext) { // We have a previous audio context, we need to murderize it
+            await audioContext.close();
+            audioContext = null;
+        }
+
+        playbackCurrentSample = 0; // Set the state for playback
+        paused = false;            // Unpause it
+
         gui.updateState({ // Populate GUI with initial, yet unknown data
             ready: false,
             position: 0,
@@ -167,27 +202,28 @@ async function startPlaying(url) { // Entry point to the
             volume: volume,
             paused: false,
             buffering: false,
-            sampleRate: 44100
+            sampleRate: 44100,
+            streamingDied: false
         });
-        await (capabilities.streaming? loadSongStreaming : loadSongLegacy)(url); // Begin loading based on capabilities
+        try {
+            await (capabilities.streaming ? loadSongStreaming : loadSongLegacy)(url); // Begin loading based on capabilities
+        } catch(e) {
+            gui.updateState({streamingDied:true, ready:true, buffering: false});
+            console.error(e);
+            return;
+        }
         // The promise returned by the loading method is either resolved after the download is done (legacy)
         // Or after we download enough to begin loading (modern)
     } else {
         return gui.alert("A song is still loading.");
     }
 
-    if (audioContext) { // We have a previous audio context, we need to murderize it
-        await audioContext.close();
-    }
-
-    playbackCurrentSample = 0; // Set the state for playback
-    paused = false;            // Unpause it
-    enableLoop = (brstm.metadata.loopFlag === 1) // Set the loop settings respective to the loop flag in brstm file
-
     audioContext = new (window.AudioContext || window.webkitAudioContext) // Because Safari is retarded
         (capabilities.sampleRate ? {sampleRate: brstm.metadata.sampleRate} : {
         }); // Do we support sampling?
     // If not, we just let the browser pick
+
+    enableLoop = (brstm.metadata.loopFlag === 1) // Set the loop settings respective to the loop flag in brstm file
 
     await unlock(audioContext); // Request unlocking of the audio context
 

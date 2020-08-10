@@ -89,7 +89,7 @@
 }
 #pl-loop {
     display: grid;
-    grid-template-columns: 16px auto 90px 128px;
+    grid-template-columns: 16px auto 109px 109px;
     grid-template-areas: "input text feedback credits";
 }
 #pl-loop > .pl-loop-text {
@@ -111,4 +111,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+}
+.error {
+    text-align: center;
+    display: flex;
+    align-items: Center;
+    justify-content: center;
+    flex-direction: column;
+    height: 100px;
+}
+.error > h3 {
+    margin: 0;
 }

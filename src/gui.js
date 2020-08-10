@@ -10,7 +10,8 @@ let state = {
     ready: false,
     buffering: false,
     sampleRate: 4.8e4,
-    looping: false
+    looping: false,
+    streamingDied: false
 };
 
 let api = {};
@@ -124,6 +125,11 @@ module.exports.runGUI = function(a) {
     guiElement = document.createElement("div");
     guiElement.classList.add("guiholder");
     guiElement.innerHTML = `
+<div class="error" style="display: none">
+    <h3>Playback failed!</h3>
+    <h3>Check your internet and play again.</h3>
+    <h3>If this issue continues, contact us.</h3>
+</div>
 <div id="gui-loading-bar">
     <div id="gui-inner-loading-bar"></div>
 </div>
@@ -190,9 +196,14 @@ let lastLength = -1;
 let lastPositionS = -1;
 let lastLooping = null;
 let lastLoaded = -1;
+let lastStreamState = null;
 
 module.exports.guiUpdate = function() {
     if (guiElement) {
+        if (lastStreamState !== state.streamingDied) {
+            guiElement.querySelector(".error").style.display = state.streamingDied ? "flex":"none";
+            lastStreamState = state.streamingDied;
+        }
         let showLoading = (state.buffering || !state.ready);
         if (lastShowLoading !== showLoading) {
             guiElement.querySelector("#gui-loading-bar").dataset.exists = showLoading;
@@ -222,7 +233,6 @@ module.exports.guiUpdate = function() {
         let pos = Math.ceil(((state.position / state.samples) * 254));
         let loaded = Math.ceil(((state.loaded / state.samples) * 254));
         if ((pos !== lastPosition) || (loaded !== lastLoaded)) {
-            console.log("Updated bar...", pos, loaded);
             barCtx.fillStyle = "#222";
             barCtx.fillRect(0, 0, 254, 16);
 
@@ -260,5 +270,7 @@ module.exports.guiUpdate = function() {
             guiElement.querySelector("#pl-loop-box").checked = state.looping;
             lastLooping = state.looping;
         }
+
+
     }
 }
