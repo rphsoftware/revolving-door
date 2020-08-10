@@ -8,7 +8,9 @@ let state = {
     paused: false,
 
     ready: false,
-    buffering: false
+    buffering: false,
+    sampleRate: 4.8e4,
+    looping: false
 };
 
 let api = {};
@@ -172,6 +174,11 @@ module.exports.runGUI = function(a) {
         api.pause();
         module.exports.guiUpdate();
     });
+
+    document.querySelector("#pl-loop-box").addEventListener("input", function() {
+        state.looping = document.querySelector("#pl-loop-box").checked;
+        api.setLoop(state.looping);
+    })
 };
 
 let lastShowLoading = null;
@@ -179,6 +186,9 @@ let lastReady = null;
 let lastVolume = -1;
 let lastPosition = -1;
 let lastPaused = null;
+let lastLength = -1;
+let lastPositionS = -1;
+let lastLooping = null;
 
 module.exports.guiUpdate = function() {
     if (guiElement) {
@@ -227,6 +237,24 @@ module.exports.guiUpdate = function() {
             guiElement.querySelector("#pl-pause").style.display = state.paused ? "none" : "block";
             guiElement.querySelector("#pl-play").style.display = !state.paused ? "none" : "block";
             lastPaused = state.paused;
+        }
+
+        // Seconds in song
+        let secondsInSong =    Math.floor(state.samples / state.sampleRate);
+        let playbackSeconds = Math.floor(state.position / state.sampleRate);
+
+        if (secondsInSong !== lastLength) {
+            guiElement.querySelector("#pl-time-end").innerText = `${Math.floor(secondsInSong / 60)}:${(secondsInSong % 60).toString().padStart(2, "0")}`;
+            lastLength = secondsInSong;
+        }
+
+        if (playbackSeconds !== lastPositionS) {
+            guiElement.querySelector("#pl-time-start").innerText = `${Math.floor(playbackSeconds / 60)}:${(playbackSeconds % 60).toString().padStart(2, "0")}`;
+            lastLength = secondsInSong;
+        }
+
+        if (lastLooping !== state.looping) {
+            guiElement.querySelector("#pl-loop-box").checked = state.looping;
         }
     }
 }

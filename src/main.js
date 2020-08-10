@@ -138,6 +138,7 @@ const internalApi = {
         playbackCurrentSample = Math.floor(p);
     },
     pause: function() { paused = !paused; },
+    setLoop: function(a) { enableLoop = a; }
 }
 
 async function startPlaying(url) { // Entry point to the
@@ -156,7 +157,8 @@ async function startPlaying(url) { // Entry point to the
             loaded: 0,
             volume: volume,
             paused: false,
-            buffering: false
+            buffering: false,
+            sampleRate: 44100
         });
         await (capabilities.streaming? loadSongStreaming : loadSongLegacy)(url); // Begin loading based on capabilities
         // The promise returned by the loading method is either resolved after the download is done (legacy)
@@ -164,8 +166,6 @@ async function startPlaying(url) { // Entry point to the
     } else {
         return gui.alert("A song is still loading.");
     }
-
-    gui.updateState({ready: true, samples: brstm.metadata.totalSamples});
 
     if (audioContext) { // We have a previous audio context, we need to murderize it
         await audioContext.close();
@@ -205,9 +205,11 @@ async function startPlaying(url) { // Entry point to the
         loadBufferSize += 20;
     }
 
+    gui.updateState({ready: true, samples: brstm.metadata.totalSamples});
+    gui.updateState({sampleRate: brstm.metadata.sampleRate});
     // Set the audio loop callback (called by the browser every time the internal buffer expires)
     scriptNode.onaudioprocess = function(audioProcessingEvent) {
-        gui.updateState({position: playbackCurrentSample, paused, volume, loaded: samplesReady});
+        gui.updateState({position: playbackCurrentSample, paused, volume, loaded: samplesReady, looping: enableLoop});
         // Get a handle for the audio buffer
         let outputBuffer = audioProcessingEvent.outputBuffer;
         if (!outputBuffer.copyToChannel) // On safari (Because it's retarded), we have to polyfill this
