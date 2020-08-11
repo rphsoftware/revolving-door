@@ -64,21 +64,21 @@ module.exports.runGestureEngine = function() {
             activeArea = e.target.dataset.gestureHitzone;
             activeAreaElem = e.target;
 
-            let [x, y] = sanitize(e.pageX, e.pageY);
+            let [x, y] = sanitize(e.clientX, e.clientY);
             fireOp(activeArea, x, y);
         }
     });
 
     document.addEventListener("mousemove", function(e) {
         if (currentlyGesturing) {
-            let [x, y] = sanitize(e.pageX, e.pageY);
+            let [x, y] = sanitize(e.clientX, e.clientY);
             fireOp(activeArea, x, y);
         }
     });
 
     document.addEventListener("mouseup", function(e) {
         if (currentlyGesturing) {
-            let [x, y] = sanitize(e.pageX, e.pageY);
+            let [x, y] = sanitize(e.clientX, e.clientY);
             fireFin(activeArea, x, y);
 
             currentlyGesturing = false;
