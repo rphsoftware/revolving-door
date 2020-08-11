@@ -33,7 +33,6 @@ function hEvent(a) {
     if (a.targetTouches.length > 0) {
         let box = a.targetTouches[0].target.getBoundingClientRect();
         let pos = (a.targetTouches[0].clientY + a.targetTouches[0].radiusY) - box.top;
-        console.log(pos, a.targetTouches[0].clientY, a.targetTouches[0].radiusY, box.top);
         if (pos < 5) pos = 0;
         if (pos > 80) pos = 84;
 
@@ -97,7 +96,6 @@ function seekOp(x, y) {
 }
 
 function seekFin(x, y) {
-    console.log("fin");
     let pos = Math.round(x);
     let posi = state.samples * (pos / 254);
     if (posi < state.loaded) {
@@ -308,7 +306,5 @@ module.exports.guiUpdate = function() {
             guiElement.querySelector("#pl-loop-box").checked = state.looping;
             lastLooping = state.looping;
         }
-
-
     }
 }

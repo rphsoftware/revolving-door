@@ -31,7 +31,6 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
 
         try {
             ac.resume();
-            console.log("!!!!!!!");
         } catch(e) {
             console.error(e);
         }
