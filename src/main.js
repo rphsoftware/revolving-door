@@ -331,12 +331,12 @@ async function startPlaying(url) { // Entry point to the
                 let postLoopSamples = partitionedGetSamples(
                     brstm,
                     brstm.metadata.loopStartSample,
-                    (bufferSize - samples[0].length)
+                    (loadBufferSize - samples[0].length)
                 );
 
                 // For every channel, join the first and second buffers created above
                 for (let i = 0; i < samples.length; i++) {
-                    let buf = new Int16Array(bufferSize).fill(0);
+                    let buf = new Int16Array(loadBufferSize).fill(0);
                     buf.set(samples[i]);
                     buf.set(postLoopSamples[i], samples[i].length);
                     samples[i] = buf;
@@ -355,7 +355,7 @@ async function startPlaying(url) { // Entry point to the
 
                 // Fill remaining space in the buffer with 0
                 for (let i = 0; i < samples.length; i++) {
-                    let buf = new Int16Array(bufferSize).fill(0);
+                    let buf = new Int16Array(loadBufferSize).fill(0);
                     buf.set(samples[i]);
                     samples[i] = buf;
                 }
