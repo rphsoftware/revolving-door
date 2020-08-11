@@ -18,3 +18,10 @@ The program has been tested in all modern browsers (Chrome, Firefox, Safari) and
 
 The program attempts to adjust its functionality to what the browser requires (Either disabling or enabling the streaming features for example).
 
+## Software used:
+
+This program uses `webpack` to compile and bundle itself ( https://webpack.js.org/ )
+
+The `brstm` module by https://github.com/kenrick95 is used to decode BRSTM files (https://github.com/kenrick95/nikku/blob/master/src/brstm/ , https://www.npmjs.com/package/brstm , licensed under the MIT license)
+
+The audio resampler used by the program was written by Grant Galitz and was released to the Public Domain by the author.
