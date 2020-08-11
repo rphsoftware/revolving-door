@@ -1,3 +1,5 @@
+const ge = require('./gestureEngine');
+
 let h = 0;
 
 let state = {
@@ -14,6 +16,11 @@ let state = {
     streamingDied: false
 };
 
+let overrides = {
+    volume: null,
+    position: null
+}
+
 let api = {};
 
 let volumeCtx = null;
@@ -22,67 +29,37 @@ let guiElement = null;
 let lastY = -30;
 
 function hEvent(a) {
-    if (a.type !== "click") { try { a.preventDefault(); } catch(e) {} }
-    if (a.type === "touchmove" || a.type === "touchstart") {
-        if (a.targetTouches.length > 0) {
-            let box = a.targetTouches[0].target.getBoundingClientRect();
-            let pos = (a.targetTouches[0].clientY + a.targetTouches[0].radiusY) - box.top;
-            console.log(pos, a.targetTouches[0].clientY, a.targetTouches[0].radiusY, box.top);
-            if (pos < 5) pos = 0;
-            if (pos > 80) pos = 84;
-
-            let volume = 1 - (pos / 84);
-            state.volume = volume;
-            api.setVolume(volume);
-            module.exports.guiUpdate();
-            localStorage.setItem("volumeoverride", volume);
-        }
-    }
-    if (a.type === "click" || a.type === "mousemove") {
-        if (a.type === "mousemove") {
-            if (a.buttons !== 1) return;
-        }
-        let box = a.target.getBoundingClientRect();
-        let pos = (a.clientY) - box.top;
+    try { a.preventDefault(); } catch(e) {}
+    if (a.targetTouches.length > 0) {
+        let box = a.targetTouches[0].target.getBoundingClientRect();
+        let pos = (a.targetTouches[0].clientY + a.targetTouches[0].radiusY) - box.top;
+        console.log(pos, a.targetTouches[0].clientY, a.targetTouches[0].radiusY, box.top);
         if (pos < 5) pos = 0;
         if (pos > 80) pos = 84;
 
         let volume = 1 - (pos / 84);
-        state.volume = volume;
-        api.setVolume(volume);
+        overrides.volume = volume;
+        if (a.type === "touchend") {
+            state.volume = overrides.volume;
+            api.setVolume(overrides.volume);
+            overrides.volume = null;
+            localStorage.setItem("volumeoverride", volume);
+        }
         module.exports.guiUpdate();
-        localStorage.setItem("volumeoverride", volume);
+    } else {
+        if (a.type === "touchend") {
+            state.volume = overrides.volume;
+            api.setVolume(overrides.volume);
+            overrides.volume = null;
+        }
     }
 }
 
 function hsEvent(a) {
-    if (a.type !== "click") { try { a.preventDefault(); } catch(e) {} }
-    if (a.type === "touchmove" || a.type === "touchstart") {
-        if (a.targetTouches.length > 0) {
-            let box = a.targetTouches[0].target.getBoundingClientRect();
-            let pos = (a.targetTouches[0].clientX + a.targetTouches[0].radiusX) - box.left;
-
-            if (pos < 5) pos = 0;
-            if (pos > 254) pos = 254;
-
-            pos = Math.round(pos);
-            if (pos === lastY) return;
-            lastY = pos;
-
-            let posi = state.samples * (pos / 254);
-            if (posi < state.loaded) {
-                api.seek(posi);
-            }
-
-            module.exports.guiUpdate();
-        }
-    }
-    if (a.type === "click" || a.type === "mousemove") {
-        if (a.type === "mousemove") {
-            if (a.buttons !== 1) return;
-        }
-        let box = a.target.getBoundingClientRect();
-        let pos = (a.clientX) - box.left;
+    try { a.preventDefault(); } catch(e) {}
+    if (a.targetTouches.length > 0) {
+        let box = a.targetTouches[0].target.getBoundingClientRect();
+        let pos = (a.targetTouches[0].clientX + a.targetTouches[0].radiusX) - box.left;
 
         if (pos < 5) pos = 0;
         if (pos > 254) pos = 254;
@@ -93,12 +70,59 @@ function hsEvent(a) {
 
         let posi = state.samples * (pos / 254);
         if (posi < state.loaded) {
-            api.seek(posi);
+            overrides.position = posi;
+        }
+
+        if (a.type === "touchend") {
+            api.seek(overrides.position);
+            overrides.position = null;
         }
 
         module.exports.guiUpdate();
+    } else {
+        if (a.type === "touchend") {
+            api.seek(overrides.position);
+            overrides.position = null;
+        }
     }
 }
+
+function seekOp(x, y) {
+    let pos = Math.round(x);
+    let posi = state.samples * (pos / 254);
+    if (posi < state.loaded) {
+        overrides.position = posi;
+    }
+    module.exports.guiUpdate();
+}
+
+function seekFin(x, y) {
+    console.log("fin");
+    let pos = Math.round(x);
+    let posi = state.samples * (pos / 254);
+    if (posi < state.loaded) {
+        overrides.position = posi;
+    }
+    api.seek(posi);
+    overrides.position = null;
+    module.exports.guiUpdate();
+}
+
+function volOp(x, y) {
+    y = Math.round(y);
+    overrides.volume = 1 - (y / 84);
+    module.exports.guiUpdate();
+}
+
+function volFin(x, y) {
+    y = Math.round(y);
+    let volume = 1 - (y / 84);
+    overrides.volume = null;
+    localStorage.setItem("volumeoverride", volume);
+    api.setVolume(volume);
+    module.exports.guiUpdate();
+}
+
 
 module.exports.alert = function(text) {
     let box = document.createElement("div");
@@ -145,12 +169,12 @@ module.exports.runGUI = function(a) {
             <path d="M 10, 10 l 0, 28 l 10, 0 l 0, -28 M 28, 10 l 0, 28 l 10, 0 l 0, -28" fill="white"></path>
         </svg>
     </div>
-    <canvas id="pl-volume" width="16" height="84"></canvas>
+    <canvas id="pl-volume" width="16" height="84" data-gesture-hitzone="volume"></canvas>
     <div id="pl-timing">
         <span id="pl-time-start">0:00</span>
         <span id="pl-time-end"  >0:00</span>
     </div>
-    <canvas id="pl-seek" width="254" height="16"></canvas>
+    <canvas id="pl-seek" width="254" height="16" data-gesture-hitzone="seek"></canvas>
     <div id="pl-loop">
         <input type="checkbox" id="pl-loop-box" style="width: 16px; height: 16px; margin: 0;">
         <span class="pl-loop-text">Enable loop</span>
@@ -164,17 +188,13 @@ module.exports.runGUI = function(a) {
     volumeCtx = document.querySelector("#pl-volume").getContext("2d");
     barCtx = document.querySelector("#pl-seek").getContext("2d");
 
-    document.querySelector("#pl-volume").addEventListener("click", hEvent);
-    document.querySelector("#pl-volume").addEventListener("mousemove", hEvent);
     document.querySelector("#pl-volume").addEventListener("touchstart",hEvent);
-    document.querySelector("#pl-volume").addEventListener("touchend", hEvent);
     document.querySelector("#pl-volume").addEventListener("touchmove", hEvent);
+    document.querySelector("#pl-volume").addEventListener("touchend", hEvent);
 
-    document.querySelector("#pl-seek").addEventListener("click", hsEvent);
-    document.querySelector("#pl-seek").addEventListener("mousemove", hsEvent);
     document.querySelector("#pl-seek").addEventListener("touchstart",hsEvent);
-    document.querySelector("#pl-seek").addEventListener("touchend", hsEvent);
     document.querySelector("#pl-seek").addEventListener("touchmove", hsEvent);
+    document.querySelector("#pl-seek").addEventListener("touchend", hsEvent);
 
     document.querySelector("#pl-pause-play").addEventListener("click", function() {
         api.pause();
@@ -184,7 +204,16 @@ module.exports.runGUI = function(a) {
     document.querySelector("#pl-loop-box").addEventListener("input", function() {
         state.looping = document.querySelector("#pl-loop-box").checked;
         api.setLoop(state.looping);
-    })
+    });
+
+    guiElement.addEventListener("drag", function(e) { e.preventDefault(); });
+
+    ge.runGestureEngine();
+
+    ge.registerOpEvent("seek", seekOp);
+    ge.registerFinEvent("seek", seekFin);
+    ge.registerOpEvent("volume", volOp);
+    ge.registerFinEvent("volume", volFin);
 };
 
 let lastShowLoading = null;
@@ -220,6 +249,9 @@ module.exports.guiUpdate = function() {
         if (!state.ready) return;
 
         let vol = Math.round(84 - (84 * state.volume));
+        if (overrides.volume !== null) {
+            vol = Math.round(84 - (84 * overrides.volume));
+        }
         if (vol !== lastVolume) {
             volumeCtx.fillStyle = "#444";
             volumeCtx.fillRect(0, 0, 16, 84);
@@ -231,6 +263,9 @@ module.exports.guiUpdate = function() {
         }
 
         let pos = Math.ceil(((state.position / state.samples) * 254));
+        if (overrides.position !== null) {
+            pos = Math.ceil(((overrides.position / state.samples) * 254));
+        }
         let loaded = Math.ceil(((state.loaded / state.samples) * 254));
         if ((pos !== lastPosition) || (loaded !== lastLoaded)) {
             barCtx.fillStyle = "#222";
@@ -255,6 +290,9 @@ module.exports.guiUpdate = function() {
         // Seconds in song
         let secondsInSong =    Math.floor(state.samples / state.sampleRate);
         let playbackSeconds = Math.floor(state.position / state.sampleRate);
+        if (overrides.position !== null) {
+            playbackSeconds = Math.floor(overrides.position / state.sampleRate);
+        }
 
         if (secondsInSong !== lastLength) {
             guiElement.querySelector("#pl-time-end").innerText = `${Math.floor(secondsInSong / 60)}:${(secondsInSong % 60).toString().padStart(2, "0")}`;

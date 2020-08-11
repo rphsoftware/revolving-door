@@ -7,6 +7,12 @@
     background: #000;
     font-family: sans-serif;
     color: white;
+
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 #gui-loading-bar {
