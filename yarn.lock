@@ -424,10 +424,10 @@ browserify-zlib@^0.2.0:
   dependencies:
     pako "~1.0.5"
 
-brstm@^1.3.3:
-  version "1.3.3"
-  resolved "https://registry.yarnpkg.com/brstm/-/brstm-1.3.3.tgz#7d60f2645af982c69574223c84a4e48e490714c4"
-  integrity sha512-LHs/ptyDoL40Ebcj/TuKmhAWa8L5u9KpqTBZpEnUgvwzcDQnzNW3bKWWHgKm5ArbAAwYHuNJyRIuLleALWhVHA==
+brstm@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/brstm/-/brstm-1.4.0.tgz#2bca4a4265049eab9c2f234e964b7f3ac2d2c75d"
+  integrity sha512-03iWhIX0u5RGi7vOGW4pews+buL1a1hQKdlbZgSMxePiNw9sxx5lNasAZ85NGaQ4tqkWi1nqan0xPwr4UrT9MA==
 
 buffer-from@^1.0.0:
   version "1.1.1"
