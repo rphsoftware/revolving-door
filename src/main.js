@@ -271,7 +271,7 @@ async function startPlaying(url) { // Entry point to the
         bufferSize
     );
     let loadBufferSize = bufferSize;
-
+    
     // If we resample, we need to also fetch some extra samples to prevent audio glitches
     if (!capabilities.sampleRate) {
         loadBufferSize += 20;
@@ -326,7 +326,7 @@ async function startPlaying(url) { // Entry point to the
                     playbackCurrentSample,
                     (brstm.metadata.totalSamples - playbackCurrentSample)
                 );
-
+                
                 let endSamplesLength = samples[0].length;
 
                 console.log((brstm.metadata.totalSamples - playbackCurrentSample), (loadBufferSize - endSamplesLength));
@@ -346,7 +346,7 @@ async function startPlaying(url) { // Entry point to the
                     samples[i] = buf;
                 }
 
-                // Set to loopStartPoint + length of second buffer
+                // Set to loopStartPoint + length of second buffer (recalculated to not set extra resampling samples)
                 playbackCurrentSample = brstm.metadata.loopStartSample + bufferSize - endSamplesLength;
             } else {
                 // No looping
