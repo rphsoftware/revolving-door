@@ -274,7 +274,7 @@ async function startPlaying(url) { // Entry point to the
 
     // If we resample, we need to also fetch some extra samples to prevent audio glitches
     if (!capabilities.sampleRate) {
-    //    loadBufferSize += 20;
+        loadBufferSize += 20;
     }
 
     gui.updateState({ready: true, samples: brstm.metadata.totalSamples});
@@ -327,13 +327,15 @@ async function startPlaying(url) { // Entry point to the
                     (brstm.metadata.totalSamples - playbackCurrentSample)
                 );
 
-                console.log((brstm.metadata.totalSamples - playbackCurrentSample), (loadBufferSize - samples[0].length));
+                let endSamplesLength = samples[0].length;
+
+                console.log((brstm.metadata.totalSamples - playbackCurrentSample), (loadBufferSize - endSamplesLength));
 
                 // Get enough samples to fully populate the buffer AFTER loop start point
                 let postLoopSamples = partitionedGetSamples(
                     brstm,
                     brstm.metadata.loopStartSample,
-                    (loadBufferSize - samples[0].length)
+                    (loadBufferSize - endSamplesLength)
                 );
 
                 // For every channel, join the first and second buffers created above
@@ -345,7 +347,7 @@ async function startPlaying(url) { // Entry point to the
                 }
 
                 // Set to loopStartPoint + length of second buffer
-                playbackCurrentSample = brstm.metadata.loopStartSample + postLoopSamples[0].length;
+                playbackCurrentSample = brstm.metadata.loopStartSample + bufferSize - endSamplesLength;
             } else {
                 // No looping
                 // Get enough samples until EOF

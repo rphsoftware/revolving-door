@@ -1819,7 +1819,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
             bufferSize
         );
         let loadBufferSize = bufferSize;
-        
+
         // If we resample, we need to also fetch some extra samples to prevent audio glitches
         if (!capabilities.sampleRate) {
             loadBufferSize += 20;
@@ -1874,7 +1874,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
                         playbackCurrentSample,
                         (brstm$1.metadata.totalSamples - playbackCurrentSample)
                     );
-                    
+
                     let endSamplesLength = samples[0].length;
 
                     console.log((brstm$1.metadata.totalSamples - playbackCurrentSample), (loadBufferSize - endSamplesLength));
@@ -1894,7 +1894,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
                         samples[i] = buf;
                     }
 
-                    // Set to loopStartPoint + length of second buffer (recalculated to not set extra resampling samples)
+                    // Set to loopStartPoint + length of second buffer
                     playbackCurrentSample = brstm$1.metadata.loopStartSample + bufferSize - endSamplesLength;
                 } else {
                     // No looping
