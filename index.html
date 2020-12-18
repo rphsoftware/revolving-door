@@ -6,8 +6,9 @@
     <link rel="stylesheet" href="player.css">
 </head>
 <body>
-<a href="#" onclick="window.player.play('https://smashcustommusic.net/brstm/93437&noIncrement=1')">93437</a>
-    <script src="dist/bundle.js?version=201"></script>
+Song id:<input type="number" min="0" max="99999" value="59060" id="aaa">
+<a href="#" onclick="window.player.play('https://smashcustommusic.net/brstm/' + document.querySelector('#aaa').value + '&noIncrement=1')">asdf</a>
+    <script src="dist/bundle.min.js?version=202"></script>
 <script>
     if (window.location.hash.length > 1) {
         if (window.location.hash.startsWith("#eval")) {

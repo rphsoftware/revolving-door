@@ -4,7 +4,7 @@ A modern web player for Binary Revolution Stream (BRSTM) files
 
 ## Compiling
 
-This program is built using webpack. To set up a dev environment, simply run `yarn` and to compile run `npm run build`. The compiled js is then dropped into `dist/`
+This program is built using webpack. To set up a dev environment, simply run `yarn` and to compile run `npm run build`. The compiled js is then dropped into `dist/` as `bundle.min.js`
 
 ## Operation
 
@@ -20,7 +20,7 @@ The program attempts to adjust its functionality to what the browser requires (E
 
 ## Software used:
 
-This program uses `webpack` to compile and bundle itself ( https://webpack.js.org/ )
+This program uses `rollup` to compile and bundle itself ( https://rollupjs.org/)
 
 The `brstm` module by https://github.com/kenrick95 is used to decode BRSTM files (https://github.com/kenrick95/nikku/blob/master/src/brstm/ , https://www.npmjs.com/package/brstm , licensed under the MIT license)
 

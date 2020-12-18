@@ -172,4 +172,4 @@ Resampler.prototype.initializeBuffers = function () {
     }
 }
 
-module.exports = Resampler;
+export default Resampler;
