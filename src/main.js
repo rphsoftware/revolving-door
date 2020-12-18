@@ -263,7 +263,7 @@ async function startPlaying(url) { // Entry point to the
 
     // Process bufferSize
     let bufferSize = scriptNode.bufferSize;
-
+    
     // If we have to resample, the buffer that we get from the BRSTM will be different size.
     bufferSize = capabilities.sampleRate ? bufferSize : getResampledSample(
         audioContext.sampleRate,
