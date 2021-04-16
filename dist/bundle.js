@@ -39,6 +39,20 @@
         } catch(e) {
             console.log("Streaming capability detection failed. Assuming fallback.");
         }
+        
+        // Check for Chrome 89
+        // https://stackoverflow.com/a/4900484
+        // https://github.com/rphsoftware/revolving-door/issues/10
+        // To Rph: Remove this chunk of code if you manage to implement a proper fix before the heat death of the universe.
+        var raw = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
+        var chromeVersion = (raw ? parseInt(raw[2], 10) : false);
+        
+        if(chromeVersion !== false && chromeVersion >= 89) {
+            //Disable native resampling
+            capabilities.sampleRate = false;
+            
+            console.log('Chrome 89 or newer detected, using audio code workarounds.');
+        }
 
         return capabilities;
     };
@@ -948,15 +962,15 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
       }
     }
 
-    var brstm = /*#__PURE__*/Object.freeze({
+    var brstm$1 = /*#__PURE__*/Object.freeze({
         __proto__: null,
         Brstm: Brstm
     });
 
-    var STREAMING_MIN_RESPONSE = 2**19;
+    var STREAMING_MIN_RESPONSE$1 = 2**19;
 
     var configProvider = {
-    	STREAMING_MIN_RESPONSE: STREAMING_MIN_RESPONSE
+    	STREAMING_MIN_RESPONSE: STREAMING_MIN_RESPONSE$1
     };
 
     var copyToChannelPolyfill = function(buf, cid) {
@@ -1375,7 +1389,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
     };
     });
 
-    var libbrstm = /*@__PURE__*/getAugmentedNamespace(brstm);
+    var libbrstm = /*@__PURE__*/getAugmentedNamespace(brstm$1);
 
     //JavaScript Audio Resampler
     //Copyright (C) 2011-2015 Grant Galitz
@@ -1555,7 +1569,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
 
 
 
-    const { STREAMING_MIN_RESPONSE: STREAMING_MIN_RESPONSE$1 } = configProvider;
+    const { STREAMING_MIN_RESPONSE } = configProvider;
     const sleep = timeout => new Promise(resolve => setTimeout(resolve, timeout));
 
     function partitionedGetSamples(brstm, start, size) {
@@ -1585,7 +1599,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
     let fullyLoaded = true;        // Set to false if file is still streaming
     let loadState = 0;             // How many bytes we loaded
     let playbackCurrentSample = 0; // Current sample of playback (in the LibBRSTM)
-    let brstm$1 = null;              // Instance of LibBRSTM
+    let brstm = null;              // Instance of LibBRSTM
     let brstmBuffer = null;        // Memory view shared with LibBRSTM
     let paused = false;
     let enableLoop = false;
@@ -1603,7 +1617,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
         let resp = await fetch(url);
         let body = await resp.arrayBuffer(); // Fetch whole song
 
-        brstm$1 = new libbrstm.Brstm(body); // Initialize libBRSTM into global state
+        brstm = new libbrstm.Brstm(body); // Initialize libBRSTM into global state
 
         fullyLoaded = true;
         loadState = Number.MAX_SAFE_INTEGER; // This is legacy loading logic, we can just assume we downloaded everything
@@ -1682,14 +1696,14 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
                         // If the offset in the file turned out to be 0 for some reason or seems to small,
                         // then fall back to the default minimum size, though the file is very likely to be invalid in this case.
                         if(brstmHeaderSize < 0x90) {
-                            brstmHeaderSize = STREAMING_MIN_RESPONSE$1;
+                            brstmHeaderSize = STREAMING_MIN_RESPONSE;
                         }
                     }
 
                     if (!resolved && brstmHeaderSize != 0 && writeOffset > brstmHeaderSize) {
                         // Initialize BRSTM instance and allow player to continue loading
                         try {
-                            brstm$1 = new libbrstm.Brstm(brstmBuffer);
+                            brstm = new libbrstm.Brstm(brstmBuffer);
                             resolve();
                             resolved = true;
                         } catch(e) {
@@ -1700,14 +1714,14 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
                     }
                     if (resolved) {
                         samplesReady = Math.floor(
-                            ((loadState - brstmHeaderSize) / brstm$1.metadata.numberChannels) / brstm$1.metadata.blockSize
-                        ) * brstm$1.metadata.samplesPerBlock;
+                            ((loadState - brstmHeaderSize) / brstm.metadata.numberChannels) / brstm.metadata.blockSize
+                        ) * brstm.metadata.samplesPerBlock;
                     }
                 } else {
                     if (!resolved) {
                         // For some reason we haven't resolved yet despite the file finishing
                         try {
-                            brstm$1 = new libbrstm.Brstm(brstmBuffer);
+                            brstm = new libbrstm.Brstm(brstmBuffer);
                             resolve();
                             resolved = true;
                         } catch(e) {
@@ -1794,11 +1808,11 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
             // Or after we download enough to begin loading (modern)
 
         audioContext = new (window.AudioContext || window.webkitAudioContext) // Because Safari is retarded
-            (capabilities.sampleRate ? {sampleRate: brstm$1.metadata.sampleRate} : {
+            (capabilities.sampleRate ? {sampleRate: brstm.metadata.sampleRate} : {
             }); // Do we support sampling?
         // If not, we just let the browser pick
 
-        enableLoop = (brstm$1.metadata.loopFlag === 1); // Set the loop settings respective to the loop flag in brstm file
+        enableLoop = (brstm.metadata.loopFlag === 1); // Set the loop settings respective to the loop flag in brstm file
 
         await webAudioUnlock(audioContext); // Request unlocking of the audio context
 
@@ -1815,7 +1829,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
         // If we have to resample, the buffer that we get from the BRSTM will be different size.
         bufferSize = capabilities.sampleRate ? bufferSize : getResampledSample(
             audioContext.sampleRate,
-            brstm$1.metadata.sampleRate,
+            brstm.metadata.sampleRate,
             bufferSize
         );
         let loadBufferSize = bufferSize;
@@ -1825,8 +1839,8 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
             loadBufferSize += 20;
         }
 
-        gui.updateState({ready: true, samples: brstm$1.metadata.totalSamples});
-        gui.updateState({sampleRate: brstm$1.metadata.sampleRate});
+        gui.updateState({ready: true, samples: brstm.metadata.totalSamples});
+        gui.updateState({sampleRate: brstm.metadata.sampleRate});
         playAudioRunning = false;
         // Set the audio loop callback (called by the browser every time the internal buffer expires)
         scriptNode.onaudioprocess = function(audioProcessingEvent) {
@@ -1854,10 +1868,10 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
 
             let samples; // Declare the variable for samples
                          // This will be filled using the below code for handling looping
-            if ((playbackCurrentSample + loadBufferSize) < brstm$1.metadata.totalSamples) { // Standard codepath if no loop
+            if ((playbackCurrentSample + loadBufferSize) < brstm.metadata.totalSamples) { // Standard codepath if no loop
                 // Populate samples with enough that we can just play it (or resample + play it) without glitches
                 samples = partitionedGetSamples(
-                    brstm$1,
+                    brstm,
                     playbackCurrentSample,
                     loadBufferSize
                 );
@@ -1870,19 +1884,19 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
                 if (enableLoop) {
                     // First, get all the samples to the end of the file
                     samples = partitionedGetSamples(
-                        brstm$1,
+                        brstm,
                         playbackCurrentSample,
-                        (brstm$1.metadata.totalSamples - playbackCurrentSample)
+                        (brstm.metadata.totalSamples - playbackCurrentSample)
                     );
                     
                     let endSamplesLength = samples[0].length;
 
-                    console.log((brstm$1.metadata.totalSamples - playbackCurrentSample), (loadBufferSize - endSamplesLength));
+                    console.log((brstm.metadata.totalSamples - playbackCurrentSample), (loadBufferSize - endSamplesLength));
 
                     // Get enough samples to fully populate the buffer AFTER loop start point
                     let postLoopSamples = partitionedGetSamples(
-                        brstm$1,
-                        brstm$1.metadata.loopStartSample,
+                        brstm,
+                        brstm.metadata.loopStartSample,
                         (loadBufferSize - endSamplesLength)
                     );
 
@@ -1895,14 +1909,14 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
                     }
 
                     // Set to loopStartPoint + length of second buffer (recalculated to not set extra resampling samples)
-                    playbackCurrentSample = brstm$1.metadata.loopStartSample + bufferSize - endSamplesLength;
+                    playbackCurrentSample = brstm.metadata.loopStartSample + bufferSize - endSamplesLength;
                 } else {
                     // No looping
                     // Get enough samples until EOF
                     samples = partitionedGetSamples(
-                        brstm$1,
+                        brstm,
                         playbackCurrentSample,
-                        (brstm$1.metadata.totalSamples - playbackCurrentSample - 1)
+                        (brstm.metadata.totalSamples - playbackCurrentSample - 1)
                     );
 
                     // Fill remaining space in the buffer with 0
@@ -1942,7 +1956,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
                 // If we require resampling
                 if (!capabilities.sampleRate) {
                     // Initialize the resampler with the original data we got from BRSTM
-                    let zresampler = new Resampler(brstm$1.metadata.sampleRate, audioContext.sampleRate, 1, chan);
+                    let zresampler = new Resampler(brstm.metadata.sampleRate, audioContext.sampleRate, 1, chan);
 
                     // Resample all the samples we loaded
                     zresampler.resampler(loadBufferSize);

@@ -15,6 +15,7 @@
     "build": "rollup --config rollup.config.js"
   },
   "dependencies": {
-    "brstm": "^1.4.0"
+    "brstm": "^1.4.0",
+    "rollup": "^2.45.2"
   }
 }
