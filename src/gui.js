@@ -131,8 +131,8 @@ module.exports.runGUI = function(a) {
     guiElement.innerHTML = `
 <div class="error" style="display: none">
     <h3>Playback failed!</h3>
-    <h3>Check your internet and play again.</h3>
-    <h3>If this issue continues, contact us.</h3>
+    <h3>Reload the page and try again.</h3>
+    <h3>If the issue continues, contact us.</h3>
 </div>
 <div id="gui-loading-bar">
     <div id="gui-inner-loading-bar"></div>
