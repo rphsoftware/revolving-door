@@ -20,8 +20,8 @@ The program attempts to adjust its functionality to what the browser requires (E
 
 ## Software used:
 
-This program uses `rollup` to compile and bundle itself ( https://rollupjs.org/)
+This program uses [Rollup](https://rollupjs.org/) to compile and bundle itself (https://rollupjs.org/)
 
-The `brstm` module by https://github.com/kenrick95 is used to decode BRSTM files (https://github.com/kenrick95/nikku/blob/master/src/brstm/ , https://www.npmjs.com/package/brstm , licensed under the MIT license)
+The [`brstm`](https://github.com/kenrick95/nikku/blob/master/src/brstm/) module by [Kenrick](https://github.com/kenrick95) is used to decode BRSTM files (https://github.com/kenrick95/nikku/blob/master/src/brstm/, https://www.npmjs.com/package/brstm, licensed under the MIT license)
 
 The audio resampler used by the program was written by Grant Galitz and was released to the Public Domain by the author.
