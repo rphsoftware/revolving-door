@@ -95,8 +95,8 @@
 }
 #pl-loop {
     display: grid;
-    grid-template-columns: 16px auto 109px 109px;
-    grid-template-areas: "input text feedback credits";
+    grid-template-columns: 35px 16px auto 90px 80px;
+    grid-template-areas: "input input text feedback credits";
 }
 #pl-loop > .pl-loop-text {
     font-size: 12px;

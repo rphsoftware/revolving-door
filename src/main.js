@@ -40,13 +40,14 @@ let playbackCurrentSample = 0; // Current sample of playback (in the LibBRSTM)
 let brstm = null;              // Instance of LibBRSTM
 let brstmBuffer = null;        // Memory view shared with LibBRSTM
 let paused = false;
-let enableLoop = false;
+let endlessLoop = false;
+let loopCounter = 1;
 let streamCancel = false;
 let playAudioRunning = false;
 
 let samplesReady = 0;          // How many samples the streamer loaded
 let volume = (localStorage.getItem("volumeoverride") || 1);
-function guiupd() { gui.updateState({position: playbackCurrentSample, paused, volume, loaded: samplesReady, looping: enableLoop}); }
+function guiupd() { gui.updateState({position: playbackCurrentSample, paused, volume, loaded: samplesReady, looping: endlessLoop}); }
 function getResampledSample(sourceSr, targetSr, sample) {
     return Math.ceil((sample / sourceSr) * targetSr);
 }
@@ -193,7 +194,11 @@ const internalApi = {
         guiupd();
     },
     setLoop: function(a) {
-        enableLoop = a;
+        endlessLoop = a;
+        guiupd();
+    },
+    setLoopCounter: function(a) {
+        loopCounter = a;
         guiupd();
     }
 }
@@ -232,6 +237,7 @@ async function startPlaying(url) { // Entry point to the
         paused: false,
         buffering: false,
         sampleRate: 44100,
+        loopCounter: loopCounter,
         streamingDied: false
     });
     try {
@@ -250,7 +256,13 @@ async function startPlaying(url) { // Entry point to the
         }); // Do we support sampling?
     // If not, we just let the browser pick
 
-    enableLoop = (brstm.metadata.loopFlag === 1) // Set the loop settings respective to the loop flag in brstm file
+    endlessLoop = (brstm.metadata.loopFlag === 1) // Set the loop settings respective to the loop flag in brstm file
+    if (brstm.metadata.loopFlag === 1) {
+        loopCounter = document.querySelector("#pl-loop-counter-box").value;
+    } else {
+        loopCounter = 0;
+        document.querySelector("#pl-loop-counter-box").value = 0;
+    }
 
     await unlock(audioContext); // Request unlocking of the audio context
 
@@ -319,7 +331,7 @@ async function startPlaying(url) { // Entry point to the
         } else {
             // We are reaching EOF
             // Check if we have looping enabled
-            if (enableLoop) {
+            if (endlessLoop || loopCounter > 0) {
                 // First, get all the samples to the end of the file
                 samples = partitionedGetSamples(
                     brstm,
@@ -348,6 +360,10 @@ async function startPlaying(url) { // Entry point to the
 
                 // Set to loopStartPoint + length of second buffer (recalculated to not set extra resampling samples)
                 playbackCurrentSample = brstm.metadata.loopStartSample + bufferSize - endSamplesLength;
+                // reduce loop counter by one
+                if (!endlessLoop) {
+                    loopCounter--;
+                }
             } else {
                 // No looping
                 // Get enough samples until EOF
@@ -363,6 +379,8 @@ async function startPlaying(url) { // Entry point to the
                     buf.set(samples[i]);
                     samples[i] = buf;
                 }
+                // Reset loop counter to input value
+                loopCounter = document.querySelector("#pl-loop-counter-box").value;
 
                 // Tell the player that on the next iteration we are at the start and paused
                 playbackCurrentSample = 0;
