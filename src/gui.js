@@ -11,6 +11,7 @@ let state = {
     buffering: false,
     sampleRate: 4.8e4,
     looping: false,
+    loopCounter: 1,
     streamingDied: false
 };
 
@@ -156,8 +157,9 @@ module.exports.runGUI = function(a) {
     </div>
     <canvas id="pl-seek" width="254" height="16" data-gesture-hitzone="seek"></canvas>
     <div id="pl-loop">
-        <input type="checkbox" id="pl-loop-box" style="width: 16px; height: 16px; margin: 0;">
-        <span class="pl-loop-text">Enable loop</span>
+        <input type="number" id="pl-loop-counter-box" value="1" min="0" style="width: 35px; height: 16px; background-color: #000000; color: #FFFFFF; border: none;" title="Loop Counter">
+        <input type="checkbox" id="pl-loop-box" style="width: 16px; height: 16px; margin-right: 0;">
+        <span class="pl-loop-text">Endless loop</span>
         <a class="pl-loop-text" target="_blank" href="https://smashcustommusic.net/feedback/">Send feedback</a>
         <a class="pl-loop-text" target="_blank" href="https://github.com/rphsoftware/revolving-door">v2 by Rph</a>
     </div>
@@ -184,6 +186,11 @@ module.exports.runGUI = function(a) {
     document.querySelector("#pl-loop-box").addEventListener("input", function() {
         state.looping = document.querySelector("#pl-loop-box").checked;
         api.setLoop(state.looping);
+    });
+
+    document.querySelector("#pl-loop-counter-box").addEventListener("input", function() {
+        state.loopCounter = document.querySelector("#pl-loop-counter-box").value;
+        api.setLoopCounter(state.loopCounter);
     });
 
     guiElement.addEventListener("drag", function(e) { e.preventDefault(); });
