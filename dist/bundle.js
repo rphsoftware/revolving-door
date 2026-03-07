@@ -1123,6 +1123,12 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
     let guiElement = null;
     let lastY = -30;
 
+    let barCtxColorEmpty = null;
+    let barCtxColorLoaded = null;
+    let barCtxColorFilled = null;
+    let volumeCtxColorEmpty = null;
+    let volumeCtxColorFilled = null;
+
     function hEvent(a) {
         try { a.preventDefault(); } catch(e) {}
         if (a.targetTouches.length > 0) {
@@ -1261,6 +1267,18 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
 </div>`;
 
         document.body.appendChild(guiElement);
+        
+        //Try to get custom color values for the volume and seek bars from the website's CSS.
+        barCtxColorEmpty     = window.getComputedStyle(document.body).getPropertyValue('--revdoor-bar-colour-blank-playback');
+        barCtxColorLoaded    = window.getComputedStyle(document.body).getPropertyValue('--revdoor-bar-colour-buffered-playback');
+        barCtxColorFilled    = window.getComputedStyle(document.body).getPropertyValue('--revdoor-bar-colour-filled-playback');
+        volumeCtxColorEmpty  = window.getComputedStyle(document.body).getPropertyValue('--revdoor-bar-colour-blank-volume');
+        volumeCtxColorFilled = window.getComputedStyle(document.body).getPropertyValue('--revdoor-bar-colour-filled-volume');
+        if(barCtxColorEmpty == null    || barCtxColorEmpty == "")    barCtxColorEmpty = "#222";
+        if(barCtxColorLoaded == null   || barCtxColorLoaded == "")   barCtxColorLoaded = "#666";
+        if(barCtxColorFilled == null   || barCtxColorFilled == "")   barCtxColorFilled = "hsl(200, 85%, 55%)";
+        if(volumeCtxColorEmpty == null || volumeCtxColorEmpty == "") volumeCtxColorEmpty = "#444";
+        if(barCtxColorFilled == null   || barCtxColorFilled == "")   volumeCtxColorFilled = "hsl(200, 85%, 55%)";
 
         volumeCtx = document.querySelector("#pl-volume").getContext("2d");
         barCtx = document.querySelector("#pl-seek").getContext("2d");
@@ -1330,10 +1348,10 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
                 vol = Math.round(84 - (84 * overrides.volume));
             }
             if (vol !== lastVolume) {
-                volumeCtx.fillStyle = "#444";
+                volumeCtx.fillStyle = volumeCtxColorEmpty;
                 volumeCtx.fillRect(0, 0, 16, 84);
 
-                volumeCtx.fillStyle = "hsl(200, 85%, 55%)";
+                volumeCtx.fillStyle = volumeCtxColorFilled;
                 volumeCtx.fillRect(0, vol, 16, 84);
 
                 lastVolume = vol;
@@ -1345,13 +1363,13 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
             }
             let loaded = Math.ceil(((state.loaded / state.samples) * 254));
             if ((pos !== lastPosition) || (loaded !== lastLoaded)) {
-                barCtx.fillStyle = "#222";
+                barCtx.fillStyle = barCtxColorEmpty;
                 barCtx.fillRect(0, 0, 254, 16);
 
-                barCtx.fillStyle = "#666";
+                barCtx.fillStyle = barCtxColorLoaded;
                 barCtx.fillRect(0, 0, Math.min(254, loaded), 16);
 
-                barCtx.fillStyle = "hsl(200, 85%, 55%)";
+                barCtx.fillStyle = barCtxColorFilled;
                 barCtx.fillRect(0, 0, Math.min(254, pos), 16);
 
                 lastPosition = pos;

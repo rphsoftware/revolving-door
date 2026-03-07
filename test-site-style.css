@@ -1,0 +1,10 @@
+/* This CSS file is an example on how the player's colors can be modified to match a webpage's style. */
+/* However, in this example, these are all the default values. */
+
+:root {
+    --revdoor-bar-colour-blank-playback: #222;
+    --revdoor-bar-colour-buffered-playback: #666;
+    --revdoor-bar-colour-blank-volume: #444;
+    --revdoor-bar-colour-filled-playback: hsl(200, 85%, 55%);
+    --revdoor-bar-colour-filled-volume: hsl(200, 85%, 55%);
+}
