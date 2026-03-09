@@ -1620,11 +1620,27 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
     let brstm = null;              // Instance of LibBRSTM
     let brstmBuffer = null;        // Memory view shared with LibBRSTM
     let paused = false;
+    let pauseRequest = 0;          // Pause API function will make a pauseRequest instead of pausing/resuming directly, in order to allow the audio processor to execute it cleanly.
     let enableLoop = false;
     let streamCancel = false;
     let playAudioRunning = false;
 
     let samplesReady = 0;          // How many samples the streamer loaded
+
+    // Waits at least 50ms and until at least some samples are available for playback. This is used to hopefully avoid a crunchy start of the player.
+    function waitUntilEnoughBufferedSamples() {
+        return new Promise(async (resolve) => {
+            // If more than a second passes, we will bail out and let the player handle the problem of buffering on its own.
+            let iterations = 0;
+            while(iterations++ < 20) {
+                //   ----------------------------------      \/ - Amount of buffered audio seconds required.
+                if(iterations > 1 && samplesReady > brstm.metadata.sampleRate * 2.3) break;
+                await sleep(50);
+            }
+            resolve();
+        });
+    }
+
     let volume = (localStorage.getItem("volumeoverride") || 1);
     function guiupd() { gui.updateState({position: playbackCurrentSample, paused, volume, loaded: samplesReady, looping: enableLoop}); }
     function getResampledSample(sourceSr, targetSr, sample) {
@@ -1768,8 +1784,15 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
             guiupd();
         },
         pause: function() {
-            paused = !paused;
-            audioContext[paused ? "suspend" : "resume"]();
+            if(!paused && pauseRequest == 0) {
+                pauseRequest = 1;
+                //With a pause request, the audio callback itself will eventually suspend the audioContext.
+            }
+            else if(paused && pauseRequest == 0) {
+                pauseRequest = -1; //That is an UNpausing request.
+                audioContext.resume();
+            }
+            
             guiupd();
         },
         setLoop: function(a) {
@@ -1802,6 +1825,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
 
         playbackCurrentSample = 0; // Set the state for playback
         paused = false;            // Unpause it
+        pauseRequest = -1;         // Give it an unpause request, so it fills the first initial audio buffer with silence.
 
         gui.updateState({ // Populate GUI with initial, yet unknown data
             ready: false,
@@ -1834,10 +1858,6 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
 
         await webAudioUnlock(audioContext); // Request unlocking of the audio context
 
-        if (capabilities.streaming) {
-            await sleep(1000); // In streaming sometimes the start is slightly crunchy, this should fix it.
-        }
-
         // Create the script node
         scriptNode = audioContext.createScriptProcessor(0, 0, 2);
 
@@ -1856,6 +1876,10 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
         if (!capabilities.sampleRate) {
             loadBufferSize += 20;
         }
+        
+        if (capabilities.streaming) {
+            await waitUntilEnoughBufferedSamples(); // In streaming sometimes the start is slightly crunchy, this should fix it.
+        }
 
         gui.updateState({ready: true, samples: brstm.metadata.totalSamples});
         gui.updateState({sampleRate: brstm.metadata.sampleRate});
@@ -1867,22 +1891,42 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
             let outputBuffer = audioProcessingEvent.outputBuffer;
             if (!outputBuffer.copyToChannel) // On safari (Because it's retarded), we have to polyfill this
                 outputBuffer.copyToChannel = copyToChannelPolyfill;
-
+            
+            // If there is a pause request we first make sure to clean up the buffer, before finalizing the pause.
+            // If we are paused, we just bail out and return with just zeros
+            if (pauseRequest != 0 || paused) {
+                outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 0);
+                outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 1);
+                
+                if(pauseRequest > 0) {
+                    if(pauseRequest++ == 3) {
+                        //Finalize the pause
+                        setTimeout(function() { audioContext.suspend(); paused=true; pauseRequest=0; guiupd(); }, 10);
+                        return;
+                    }
+                }
+                
+                if(pauseRequest < 0) {
+                    //Finalize unpausing.
+                    pauseRequest = 0;
+                    paused = false;
+                    guiupd();
+                }
+                
+                return;
+            }
+            
+            
             // Not enough samples override
             if ((playbackCurrentSample + bufferSize + 1024) > samplesReady) {
                 // override, return early.
                 gui.updateState({buffering: true});
-                console.log("Buffering....");
+                //console.log("Buffering....");
                 outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 0);
                 outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 1);
                 return;
             }
             gui.updateState({buffering: false});
-            if (paused) { // If we are paused, we just bail out and return with just zeros
-                outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 0);
-                outputBuffer.copyToChannel(new Float32Array(scriptNode.bufferSize).fill(0), 1);
-                return;
-            }
 
             let samples; // Declare the variable for samples
                          // This will be filled using the below code for handling looping
@@ -1946,8 +1990,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
 
                     // Tell the player that on the next iteration we are at the start and paused
                     playbackCurrentSample = 0;
-                    paused = true;
-                    setTimeout(function() { audioContext.suspend(); }, 200);
+                    pauseRequest = 1;
                 }
             }
 
