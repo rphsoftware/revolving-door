@@ -177,11 +177,11 @@ module.exports.runGUI = function(a) {
     barCtxColorFilled    = window.getComputedStyle(document.body).getPropertyValue('--revdoor-bar-colour-filled-playback');
     volumeCtxColorEmpty  = window.getComputedStyle(document.body).getPropertyValue('--revdoor-bar-colour-blank-volume');
     volumeCtxColorFilled = window.getComputedStyle(document.body).getPropertyValue('--revdoor-bar-colour-filled-volume');
-    if(barCtxColorEmpty == null    || barCtxColorEmpty == "")    barCtxColorEmpty = "#222";
-    if(barCtxColorLoaded == null   || barCtxColorLoaded == "")   barCtxColorLoaded = "#666";
-    if(barCtxColorFilled == null   || barCtxColorFilled == "")   barCtxColorFilled = "hsl(200, 85%, 55%)";
-    if(volumeCtxColorEmpty == null || volumeCtxColorEmpty == "") volumeCtxColorEmpty = "#444";
-    if(barCtxColorFilled == null   || barCtxColorFilled == "")   volumeCtxColorFilled = "hsl(200, 85%, 55%)";
+    if(barCtxColorEmpty == null     || barCtxColorEmpty == "")     barCtxColorEmpty = "#222";
+    if(barCtxColorLoaded == null    || barCtxColorLoaded == "")    barCtxColorLoaded = "#666";
+    if(barCtxColorFilled == null    || barCtxColorFilled == "")    barCtxColorFilled = "hsl(200, 85%, 55%)";
+    if(volumeCtxColorEmpty == null  || volumeCtxColorEmpty == "")  volumeCtxColorEmpty = "#444";
+    if(volumeCtxColorFilled == null || volumeCtxColorFilled == "") volumeCtxColorFilled = "hsl(200, 85%, 55%)";
 
     volumeCtx = document.querySelector("#pl-volume").getContext("2d");
     barCtx = document.querySelector("#pl-seek").getContext("2d");
