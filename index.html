@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="test-site-style.css"><!-- This is an optional style as an example on how the player's seek/volume bars can be styled by the CSS of a website-->
 </head>
 <body>
-Song id:<input type="number" min="0" max="99999" value="59060" id="aaa">
+Song id:<input type="number" min="0" max="199999" value="59060" id="aaa">
 <a href="#" onclick="window.player.play('https://smashcustommusic.net/brstm/' + document.querySelector('#aaa').value + '&noIncrement=1')">asdf</a>
-    <script src="dist/bundle.min.js?version=202"></script>
+    <script src="dist/bundle.js"></script>
 <script>
     if (window.location.hash.length > 1) {
         if (window.location.hash.startsWith("#eval")) {
