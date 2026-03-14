@@ -112,7 +112,9 @@ function seekFin(x, y) {
 
 function volOp(x, y) {
     y = Math.round(y);
+    let volume = 1 - (y / 84);
     overrides.volume = 1 - (y / 84);
+    api.setVolume(volume);
     module.exports.guiUpdate();
 }
 

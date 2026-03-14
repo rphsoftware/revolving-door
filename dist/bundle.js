@@ -1209,7 +1209,9 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
 
     function volOp(x, y) {
         y = Math.round(y);
+        let volume = 1 - (y / 84);
         overrides.volume = 1 - (y / 84);
+        api.setVolume(volume);
         module.exports.guiUpdate();
     }
 
