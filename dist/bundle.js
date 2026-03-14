@@ -1264,7 +1264,7 @@ style="stroke:#fff;stroke-width:5;stroke-linejoin:round;fill:#fff;"
         <input type="checkbox" id="pl-loop-box" style="width: 16px; height: 16px; margin: 0;">
         <span class="pl-loop-text">Enable loop</span>
         <a class="pl-loop-text" target="_blank" href="https://smashcustommusic.net/feedback/">Send feedback</a>
-        <a class="pl-loop-text" target="_blank" href="https://github.com/rphsoftware/revolving-door">v2 by Rph</a>
+        <a class="pl-loop-text" target="_blank" href="https://github.com/rphsoftware/revolving-door">v2.4 by Rph</a>
     </div>
 </div>`;
 
