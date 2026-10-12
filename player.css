@@ -37,15 +37,15 @@
 @keyframes animation {
     0% {
         margin-left: 0;
-        background: hsl(200, 85%, 55%);
+        background: var(--revdoor-bar-colour-loading-left, hsl(200, 85%, 55%));
     }
     50% {
         margin-left: 70%;
-        background: hsl(200, 85%, 85%);
+        background: var(--revdoor-bar-colour-loading-right, hsl(200, 85%, 85%));
     }
     100% {
         margin-left: 0;
-        background: hsl(200, 85%, 55%);
+        background: var(--revdoor-bar-colour-loading-left, hsl(200, 85%, 55%));
     }
 }
 

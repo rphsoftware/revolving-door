@@ -7,4 +7,6 @@
     --revdoor-bar-colour-blank-volume: #444;
     --revdoor-bar-colour-filled-playback: hsl(200, 85%, 55%);
     --revdoor-bar-colour-filled-volume: hsl(200, 85%, 55%);
+    --revdoor-bar-colour-loading-left: hsl(200, 85%, 55%);
+    --revdoor-bar-colour-loading-right: hsl(200, 85%, 85%);
 }
